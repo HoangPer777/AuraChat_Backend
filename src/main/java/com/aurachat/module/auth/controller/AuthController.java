@@ -3,12 +3,14 @@ package com.aurachat.module.auth.controller;
 import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.auth.service.AuthService;
 import com.aurachat.module.auth.service.ForgotPasswordService;
+import com.aurachat.module.auth.service.AvatarUploadService;
 import com.aurachat.module.auth.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -19,6 +21,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final ForgotPasswordService forgotPasswordService;
+    private final AvatarUploadService avatarUploadService;
 
     @PostMapping("/register")
     public ResponseEntity<DataResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest req) {
@@ -57,6 +60,15 @@ public class AuthController {
     public ResponseEntity<DataResponse<Void>> logout(@AuthenticationPrincipal String userId) {
         authService.logout(userId);
         return ResponseEntity.ok(DataResponse.success("Logged out successfully"));
+    }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<DataResponse<String>> uploadAvatar(
+        @AuthenticationPrincipal String userId,
+        @RequestParam("file") MultipartFile file
+    ) {
+        String avatarUrl = avatarUploadService.uploadAvatar(userId, file);
+        return ResponseEntity.ok(DataResponse.success(avatarUrl, "Avatar uploaded successfully"));
     }
 
     // ─── Forgot / Reset Password ──────────────────────────────────────────────
