@@ -51,6 +51,18 @@ public class SystemException extends CustomException {
         this.component = component;
     }
     
+    /**
+     * Constructs a new SystemException with a specific error code and without a cause.
+     *
+     * @param errorCode the specific system error code
+     * @param component the system component where the error occurred
+     * @param message detailed error message
+     */
+    public SystemException(ErrorCode errorCode, String component, String message) {
+        super(errorCode.getCode(), message);
+        this.component = component;
+    }
+    
     @Override
     public String toString() {
         return String.format("%s[errorCode=%s, component=%s, message=%s, context=%s]",
