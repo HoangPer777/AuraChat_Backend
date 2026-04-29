@@ -1,5 +1,8 @@
 package com.aurachat.module.auth.service;
 
+import com.aurachat.common.exception.AuthenticationException;
+import com.aurachat.common.exception.BusinessLogicException;
+import com.aurachat.common.exception.ErrorCode;
 import com.aurachat.config.JwtUtil;
 import com.aurachat.module.auth.dto.*;
 import com.aurachat.module.auth.entity.RefreshToken;
@@ -27,7 +30,10 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.email())) {
-            throw new IllegalArgumentException("Email already in use");
+            throw new BusinessLogicException(
+                ErrorCode.USER_EMAIL_EXISTS, 
+                "Email uniqueness constraint"
+            );
         }
 
         User user = User.builder()
@@ -49,10 +55,18 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.email())
-            .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+            .orElseThrow(() -> new AuthenticationException(
+                ErrorCode.AUTH_INVALID_CREDENTIALS,
+                "Invalid email or password",
+                "login"
+            ));
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new AuthenticationException(
+                ErrorCode.AUTH_INVALID_CREDENTIALS,
+                "Invalid email or password",
+                "login"
+            );
         }
 
         String accessToken = jwtUtil.generateAccessToken(user.getId());
@@ -64,15 +78,26 @@ public class AuthService {
 
     public AuthResponse refresh(String rawToken) {
         RefreshToken rt = refreshTokenRepository.findByToken(rawToken)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+            .orElseThrow(() -> new AuthenticationException(
+                ErrorCode.AUTH_TOKEN_INVALID,
+                "Invalid refresh token",
+                "refresh token"
+            ));
 
         if (rt.isExpired()) {
             refreshTokenRepository.delete(rt);
-            throw new IllegalArgumentException("Refresh token expired");
+            throw new AuthenticationException(
+                ErrorCode.AUTH_TOKEN_EXPIRED,
+                "Refresh token expired",
+                "refresh token"
+            );
         }
 
         User user = userRepository.findById(rt.getUserId())
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.USER_NOT_FOUND,
+                "User associated with refresh token not found"
+            ));
 
         // Rotate refresh token
         refreshTokenRepository.delete(rt);
@@ -85,7 +110,10 @@ public class AuthService {
 
     public AuthResponse.UserInfo me(String userId) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.USER_NOT_FOUND,
+                "User not found"
+            ));
         return new AuthResponse.UserInfo(
             user.getId(), user.getEmail(), user.getDisplayName(),
             user.getAvatarUrl(), user.getBio()
@@ -96,7 +124,10 @@ public class AuthService {
 
     public AuthResponse.UserInfo updateProfile(String userId, UpdateProfileRequest req) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.USER_NOT_FOUND,
+                "User not found"
+            ));
 
         if (req.displayName() != null) user.setDisplayName(req.displayName());
         if (req.bio() != null) user.setBio(req.bio());
@@ -113,7 +144,10 @@ public class AuthService {
 
     public void updateAvatarUrl(String userId, String avatarUrl) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.USER_NOT_FOUND,
+                "User not found"
+            ));
         user.setAvatarUrl(avatarUrl);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);

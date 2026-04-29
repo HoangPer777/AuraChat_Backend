@@ -1,5 +1,8 @@
 package com.aurachat.module.auth.service;
 
+import com.aurachat.common.exception.AuthenticationException;
+import com.aurachat.common.exception.BusinessLogicException;
+import com.aurachat.common.exception.ErrorCode;
 import com.aurachat.module.auth.dto.ResetPasswordRequest;
 import com.aurachat.module.auth.entity.User;
 import com.aurachat.module.auth.repository.UserRepository;
@@ -45,17 +48,31 @@ public class ForgotPasswordService {
         String storedOtp = redisTemplate.opsForValue().get(key);
 
         if (storedOtp == null) {
-            throw new IllegalArgumentException("OTP expired or not found");
+            throw new AuthenticationException(
+                ErrorCode.AUTH_TOKEN_EXPIRED,
+                "OTP expired or not found",
+                "reset password"
+            );
         }
         if (!storedOtp.equals(req.otp())) {
-            throw new IllegalArgumentException("Invalid OTP");
+            throw new AuthenticationException(
+                ErrorCode.AUTH_INVALID_CREDENTIALS,
+                "Invalid OTP",
+                "reset password"
+            );
         }
 
         User user = userRepository.findByEmail(req.email())
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.USER_NOT_FOUND,
+                "User not found"
+            ));
 
         if (!"LOCAL".equals(user.getProvider())) {
-            throw new IllegalStateException("OAuth2 accounts cannot reset password");
+            throw new BusinessLogicException(
+                ErrorCode.USER_PROFILE_UPDATE_FAILED,
+                "OAuth2 accounts cannot reset password"
+            );
         }
 
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
