@@ -51,3 +51,5 @@ Thumbs.db
 .hypothesis/
 .pytest_cache/
 tests/
+serviceAccountKey.json
+**/serviceAccountKey.json

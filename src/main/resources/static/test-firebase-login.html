@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Login Test - AuraChat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+
+        textarea {
+            min-height: 100px;
+            max-height: 200px;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #28a745;
+            color: white;
+            margin-right: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+
+        .status-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .status-message {
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .response-box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #0c5460;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Firebase Login Test</h1>
+        <p class="subtitle">Test Firebase Authentication Endpoint</p>
+
+        <div class="info-box">
+            <strong>📝 Instructions:</strong>
+            1. Get a Firebase ID Token from your Firebase project<br>
+            2. Paste it in the "Firebase ID Token" field below<br>
+            3. Click "Test Login" to call the backend API<br>
+            4. Check the response to verify the login works
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <!-- Token Input Section -->
+        <div class="section">
+            <div class="section-title">🔑 Firebase ID Token</div>
+            <div class="form-group">
+                <label for="idToken">Paste your Firebase ID Token here:</label>
+                <textarea id="idToken" placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMzQ1Njc4OTAiLCJ0eXAiOiJKV1QifQ..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="testLogin()">🚀 Test Login</button>
+        </div>
+
+        <!-- Response Section -->
+        <div class="section">
+            <div class="section-title">📊 Response</div>
+            <div id="responseBox" class="response-box" style="display: none;"></div>
+            <p id="noResponse" style="color: #999; font-size: 14px;">No response yet. Click "Test Login" to see the response here.</p>
+        </div>
+
+        <!-- Quick Test Section -->
+        <div class="section">
+            <div class="section-title">⚡ Quick Test</div>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                Don't have a Firebase token? Try these quick tests:
+            </p>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="testRegister()">📝 Test Register</button>
+                <button class="btn-secondary" onclick="testLogin2()">🔓 Test Login</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>💡 Backend API: http://localhost:8080</p>
+            <p>📚 Endpoints: /api/auth/firebase/login, /api/auth/register, /api/auth/login</p>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status show ${type}`;
+            statusDiv.innerHTML = `
+                <div class="status-title">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'} ${type.toUpperCase()}</div>
+                <div class="status-message">${message}</div>
+            `;
+        }
+
+        function showResponse(data) {
+            const responseBox = document.getElementById('responseBox');
+            const noResponse = document.getElementById('noResponse');
+            responseBox.textContent = JSON.stringify(data, null, 2);
+            responseBox.style.display = 'block';
+            noResponse.style.display = 'none';
+        }
+
+        async function testLogin() {
+            const idToken = document.getElementById('idToken').value.trim();
+            
+            if (!idToken) {
+                showStatus('❌ Please paste a Firebase ID Token first', 'error');
+                return;
+            }
+
+            try {
+                showStatus('🔄 Sending request to /api/auth/firebase/login...', 'info');
+                
+                const response = await fetch('http://localhost:8080/api/auth/firebase/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        idToken: idToken
+                    })
+                });
+
+                const data = await response.json();
+                showResponse(data);
+
+                if (response.ok) {
+                    showStatus('✅ Login successful! Check the response below.', 'success');
+                    if (data.data && data.data.accessToken) {
+                        console.log('Access Token:', data.data.accessToken);
+                    }
+                } else {
+                    showStatus(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        async function testRegister() {
+            const email = `test${Date.now()}@example.com`;
+            const password = 'Test@123456';
+
+            try {
+                showStatus('🔄 Sending register request...', 'info');
+                
+                const response = await fetch('http://localhost:8080/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        fullName: 'Test User'
+                    })
+                });
+
+                const data = await response.json();
+                showResponse(data);
+
+                if (response.ok) {
+                    showStatus(`✅ Register successful! Email: ${email}`, 'success');
+                } else {
+                    showStatus(`❌ Register failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        async function testLogin2() {
+            const email = 'test@example.com';
+            const password = 'Test@123456';
+
+            try {
+                showStatus('🔄 Sending login request...', 'info');
+                
+                const response = await fetch('http://localhost:8080/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                showResponse(data);
+
+                if (response.ok) {
+                    showStatus('✅ Login successful! Check the response below.', 'success');
+                } else {
+                    showStatus(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Log on page load
+        console.log('🔧 Firebase Login Test Page Loaded');
+        console.log('📍 Backend URL: http://localhost:8080');
+    </script>
+</body>
+</html>

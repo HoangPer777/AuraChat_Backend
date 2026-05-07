@@ -4,6 +4,7 @@ import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.auth.service.AuthService;
 import com.aurachat.module.auth.service.ForgotPasswordService;
 import com.aurachat.module.auth.service.AvatarUploadService;
+import com.aurachat.module.auth.service.FirebaseAuthService;
 import com.aurachat.module.auth.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class AuthController {
     private final AuthService authService;
     private final ForgotPasswordService forgotPasswordService;
     private final AvatarUploadService avatarUploadService;
+    private final FirebaseAuthService firebaseAuthService;
 
     @PostMapping("/register")
     public ResponseEntity<DataResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest req) {
@@ -69,6 +71,14 @@ public class AuthController {
     ) {
         String avatarUrl = avatarUploadService.uploadAvatar(userId, file);
         return ResponseEntity.ok(DataResponse.success(avatarUrl, "Avatar uploaded successfully"));
+    }
+
+    // ─── Firebase Authentication ──────────────────────────────────────────────
+
+    @PostMapping("/firebase/login")
+    public ResponseEntity<DataResponse<AuthResponse>> firebaseLogin(@Valid @RequestBody FirebaseLoginRequest req) {
+        AuthResponse authResponse = firebaseAuthService.loginWithFirebase(req);
+        return ResponseEntity.ok(DataResponse.success(authResponse, "Firebase login successful"));
     }
 
     // ─── Forgot / Reset Password ──────────────────────────────────────────────

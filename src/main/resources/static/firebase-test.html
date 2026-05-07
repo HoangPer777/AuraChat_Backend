@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Authentication Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-google {
+            background: #4285F4;
+            color: white;
+        }
+
+        .btn-google:hover {
+            background: #357ae8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(66, 133, 244, 0.4);
+        }
+
+        .btn-facebook {
+            background: #1877F2;
+            color: white;
+        }
+
+        .btn-facebook:hover {
+            background: #0a66c2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(24, 119, 242, 0.4);
+        }
+
+        .btn-logout {
+            background: #dc3545;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-logout:hover {
+            background: #c82333;
+        }
+
+        .btn-copy {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .btn-copy:hover {
+            background: #218838;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.info {
+            border-left-color: #17a2b8;
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .status-message {
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .user-info.show {
+            display: block;
+        }
+
+        .user-info-item {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .user-info-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .user-info-value {
+            color: #666;
+            word-break: break-all;
+            margin-top: 3px;
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .token-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .token-section.show {
+            display: block;
+        }
+
+        .token-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .token-value {
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Firebase Auth Test</h1>
+        <p class="subtitle">Test Google & Facebook Login</p>
+
+        <div class="status" id="status"></div>
+
+        <div class="button-group">
+            <button class="btn-google" id="googleLoginBtn" onclick="loginWithGoogle()">
+                <span>🔵</span> Google
+            </button>
+            <button class="btn-facebook" id="facebookLoginBtn" onclick="loginWithFacebook()">
+                <span>🔵</span> Facebook
+            </button>
+        </div>
+
+        <button class="btn-logout" id="logoutBtn" onclick="logout()" style="display: none;">
+            Logout
+        </button>
+
+        <div class="user-info" id="userInfo"></div>
+
+        <div class="token-section" id="tokenSection">
+            <div class="token-label">Firebase ID Token:</div>
+            <div class="token-value" id="tokenValue"></div>
+            <button class="btn-copy" onclick="copyToken()">📋 Copy Token</button>
+        </div>
+
+        <div class="footer">
+            <p>💡 After login, copy the token from above and test the backend API:</p>
+            <p style="margin-top: 10px; font-family: monospace; background: #f0f0f0; padding: 10px; border-radius: 3px;">
+                POST /api/auth/firebase/login
+            </p>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider, 
+            FacebookAuthProvider,
+            signOut,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+
+        // ⚠️ IMPORTANT: Replace with your Firebase config
+        // Get this from Firebase Console → Project Settings → Your apps
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxxx...",  // Replace with your API key
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Make functions global
+        window.loginWithGoogle = async () => {
+            try {
+                showStatus('Logging in with Google...', 'info');
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                
+                const user = result.user;
+                const idToken = await user.getIdToken();
+                
+                console.log('✅ Login successful!');
+                console.log('User:', user);
+                console.log('ID Token:', idToken);
+                
+                displayUserInfo(user, idToken);
+                showStatus('✅ Login successful with Google!', 'success');
+            } catch (error) {
+                console.error('❌ Login failed:', error);
+                showStatus(`❌ Login failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.loginWithFacebook = async () => {
+            try {
+                showStatus('Logging in with Facebook...', 'info');
+                const provider = new FacebookAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                
+                const user = result.user;
+                const idToken = await user.getIdToken();
+                
+                console.log('✅ Login successful!');
+                console.log('User:', user);
+                console.log('ID Token:', idToken);
+                
+                displayUserInfo(user, idToken);
+                showStatus('✅ Login successful with Facebook!', 'success');
+            } catch (error) {
+                console.error('❌ Login failed:', error);
+                showStatus(`❌ Login failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                document.getElementById('userInfo').classList.remove('show');
+                document.getElementById('tokenSection').classList.remove('show');
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('googleLoginBtn').style.display = 'inline-flex';
+                document.getElementById('facebookLoginBtn').style.display = 'inline-flex';
+                showStatus('✅ Logged out successfully!', 'success');
+            } catch (error) {
+                console.error('❌ Logout failed:', error);
+                showStatus(`❌ Logout failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.copyToken = () => {
+            const tokenValue = document.getElementById('tokenValue').textContent;
+            navigator.clipboard.writeText(tokenValue).then(() => {
+                showStatus('✅ Token copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showStatus('❌ Failed to copy token', 'error');
+            });
+        };
+
+        function displayUserInfo(user, idToken) {
+            const userInfoDiv = document.getElementById('userInfo');
+            const tokenSection = document.getElementById('tokenSection');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const googleLoginBtn = document.getElementById('googleLoginBtn');
+            const facebookLoginBtn = document.getElementById('facebookLoginBtn');
+
+            // Display user info
+            userInfoDiv.innerHTML = `
+                <div class="user-info-item">
+                    <div class="user-info-label">👤 Display Name:</div>
+                    <div class="user-info-value">${user.displayName || 'N/A'}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">📧 Email:</div>
+                    <div class="user-info-value">${user.email || 'N/A'}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">🆔 UID:</div>
+                    <div class="user-info-value">${user.uid}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">🖼️ Photo URL:</div>
+                    <div class="user-info-value">${user.photoURL || 'N/A'}</div>
+                </div>
+            `;
+
+            // Display token
+            document.getElementById('tokenValue').textContent = idToken;
+
+            // Show sections
+            userInfoDiv.classList.add('show');
+            tokenSection.classList.add('show');
+            logoutBtn.style.display = 'block';
+            googleLoginBtn.style.display = 'none';
+            facebookLoginBtn.style.display = 'none';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status show ${type}`;
+            statusDiv.innerHTML = `
+                <div class="status-title">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'} ${type.toUpperCase()}</div>
+                <div class="status-message">${message}</div>
+            `;
+        }
+
+        // Check if user is already logged in
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                user.getIdToken().then(idToken => {
+                    displayUserInfo(user, idToken);
+                    showStatus('✅ Already logged in!', 'success');
+                });
+            }
+        });
+
+        // Log Firebase config status
+        console.log('🔧 Firebase Config:', firebaseConfig);
+        console.log('⚠️ Make sure to update firebaseConfig with your Firebase project credentials!');
+    </script>
+</body>
+</html>

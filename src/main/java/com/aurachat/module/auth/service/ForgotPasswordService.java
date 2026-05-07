@@ -68,13 +68,6 @@ public class ForgotPasswordService {
                 "User not found"
             ));
 
-        if (!"LOCAL".equals(user.getProvider())) {
-            throw new BusinessLogicException(
-                ErrorCode.USER_PROFILE_UPDATE_FAILED,
-                "OAuth2 accounts cannot reset password"
-            );
-        }
-
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
         userRepository.save(user);
 
