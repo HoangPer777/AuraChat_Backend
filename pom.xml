@@ -68,12 +68,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- OAuth2 Client (Google, Facebook) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
-
         <!-- Email (Forgot Password OTP) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -85,6 +79,13 @@
             <groupId>io.imagekit</groupId>
             <artifactId>image-kit-java</artifactId>
             <version>3.0.0</version>
+        </dependency>
+
+        <!-- Firebase Admin SDK -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.2.0</version>
         </dependency>
 
         <!-- Lombok -->

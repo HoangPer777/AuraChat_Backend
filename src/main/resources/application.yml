@@ -14,20 +14,6 @@ spring:
       max-file-size: 25MB
       max-request-size: 25MB
 
-  # OAuth2 - Google & Facebook
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: email, profile
-          facebook:
-            client-id: ${FACEBOOK_CLIENT_ID}
-            client-secret: ${FACEBOOK_CLIENT_SECRET}
-            scope: email, public_profile
-
   # Email (Forgot Password OTP)
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
@@ -42,7 +28,7 @@ server:
   port: 8080
 
 jwt:
-  secret: ${JWT_SECRET:your-secret-key-change-in-production}
+  secret: ${JWT_SECRET}
   access-token-expiry-ms: 86400000 # 24 hours
 
 imagekit:
@@ -50,6 +36,5 @@ imagekit:
   public-key: ${IMAGEKIT_PUBLIC_KEY}
   private-key: ${IMAGEKIT_PRIVATE_KEY}
 
-app:
-  oauth2:
-    redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/callback}
+firebase:
+  service-account-key-path: ${FIREBASE_SERVICE_ACCOUNT_KEY_PATH}
