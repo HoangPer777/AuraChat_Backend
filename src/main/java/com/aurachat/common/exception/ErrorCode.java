@@ -125,6 +125,21 @@ public enum ErrorCode {
      * User does not have access to the conversation
      */
     MESSAGE_UNAUTHORIZED_ACCESS("MSG_003", "Unauthorized access to conversation", HttpStatus.FORBIDDEN),
+
+    /**
+     * Message with the specified ID not found
+     */
+    MESSAGE_NOT_FOUND("MSG_004", "Message not found", HttpStatus.NOT_FOUND),
+
+    /**
+     * User is not a group admin and cannot perform this action
+     */
+    NOT_GROUP_ADMIN("MSG_005", "Only group admin can perform this action", HttpStatus.FORBIDDEN),
+
+    /**
+     * User is already a member of the conversation
+     */
+    CONVERSATION_MEMBER_EXISTS("MSG_006", "User is already a member of this conversation", HttpStatus.UNPROCESSABLE_ENTITY),
     
     // ========== Business Logic - Call Management ==========
     
