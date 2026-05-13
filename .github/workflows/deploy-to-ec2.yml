@@ -1,4 +1,4 @@
-name: Deploy Java BE to EC2
+name: Deploy Java BE with Docker Compose
 
 on:
   push:
@@ -19,33 +19,38 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      # Bước này build sẵn file JAR để Dockerfile bên EC2 chỉ việc copy, giúp build nhanh hơn
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      - name: Copy JAR to EC2
+      - name: Copy Project to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "target/*.jar"
-          target: "/home/${{ secrets.USERNAME }}/be"
-          strip_components: 1
+          # Đẩy toàn bộ thư mục (bao gồm target, Dockerfile, docker-compose.yml)
+          source: "./*"
+          target: "/home/${{ secrets.USERNAME }}/project-be"
 
-      - name: Restart Application via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/${{ secrets.USERNAME }}
+            # 1. Di chuyển vào thư mục dự án
+            cd /home/${{ secrets.USERNAME }}/project-be
             
-            # 1. Tạo file config (vẫn cần thiết)
+            # 2. Tạo file cấu hình bí mật từ GitHub Secrets
             printf '%s' '${{ secrets.ENV_FILE_CONTENT }}' > .env
             printf '%s' '${{ secrets.FIREBASE_CONFIG }}' > serviceAccountKey.json
             
-            # 2. Chạy Docker Compose
-            # Lệnh này sẽ dừng các container cũ, build lại và chạy ngầm (-d)
+            # 3. Thực thi Docker Compose
+            # -d: chạy ngầm, --build: build lại image mới từ code vừa push
             docker-compose down
             docker-compose up --build -d
+            
+            # 4. Dọn dẹp các Image cũ để tránh đầy ổ cứng EC2
+            docker image prune -f
