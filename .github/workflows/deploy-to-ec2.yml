@@ -27,7 +27,7 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.EC2_SSH_KEY }}
           source: "target/*.jar"
           target: "/home/${{ secrets.USERNAME }}/be"
           strip_components: 1
@@ -37,10 +37,12 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
             cd /home/${{ secrets.USERNAME }}/be
+            mkdir -p /home/${{ secrets.USERNAME }}/be/src/main/resources
+            printf '%s' "${{ secrets.FIREBASE_CONFIG }}" > /home/${{ secrets.USERNAME }}/be/src/main/resources/serviceAccountKey.json
             JAR_NAME=$(ls -t *.jar | head -1)
 
             # Ensure pm2 is available; install Node.js + pm2 if missing

@@ -21,6 +21,7 @@ import com.aurachat.module.friend.repository.FriendshipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.core.query.TextQuery;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -274,9 +275,11 @@ public class FriendService {
         }
 
         TextCriteria textCriteria = TextCriteria.forDefaultLanguage().matching(normalizedQuery);
-        TextQuery textQuery = TextQuery.queryText(textCriteria)
-            .sortByScore()
-            .limit(SEARCH_LIMIT);
+        Query textQuery = TextQuery.queryText(textCriteria);
+        if (textQuery instanceof TextQuery scoredQuery) {
+            scoredQuery.sortByScore();
+        }
+        textQuery.limit(SEARCH_LIMIT);
 
         textQuery.addCriteria(Criteria.where("id").ne(currentUserId));
         if (!friendIds.isEmpty()) {
