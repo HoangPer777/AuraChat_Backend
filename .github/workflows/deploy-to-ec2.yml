@@ -26,34 +26,38 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
-          USER: ${{ secrets.USER }}
+          username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "target/*.jar"
-          target: "/home/${{ secrets.USER }}/be"
+          target: "/home/${{ secrets.USERNAME }}/be"
           strip_components: 1
 
       - name: Restart Application via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
-          USER: ${{ secrets.USER }}
+          username: ${{ secrets.USERNAME }} # PHẢI VIẾT THƯỜNG 'username'
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            cd /home/${{ secrets.USER }}/be
-            mkdir -p /home/${{ secrets.USER }}/be/src/main/resources
-            printf '%s' "${{ secrets.FIREBASE_CONFIG }}" > /home/${{ secrets.USER }}/be/src/main/resources/serviceAccountKey.json
-            printf '%s' "${{ secrets.ENV_FILE_CONTENT }}" > /home/${{ secrets.USER }}/be/.env
+            # Tạo các thư mục cần thiết
+            mkdir -p /home/${{ secrets.USERNAME }}/be/src/main/resources
+            
+            # Ghi nội dung file cấu hình từ Secret
+            # Lưu ý: Dùng dấu nháy đơn quanh Secret để tránh lỗi ký tự đặc biệt
+            printf '%s' '${{ secrets.FIREBASE_CONFIG }}' > /home/${{ secrets.USERNAME }}/be/src/main/resources/serviceAccountKey.json
+            printf '%s' '${{ secrets.ENV_FILE_CONTENT }}' > /home/${{ secrets.USERNAME }}/be/.env
+            
+            cd /home/${{ secrets.USERNAME }}/be
             JAR_NAME=$(ls -t *.jar | head -1)
 
-            # Ensure pm2 is available; install Node.js + pm2 if missing
+            # Cài đặt PM2 nếu server chưa có (Dùng lệnh phù hợp với cả Amazon Linux và Ubuntu)
             if ! command -v pm2 >/dev/null 2>&1; then
-              sudo apt-get update -y
-              sudo apt-get install -y curl
-              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              sudo apt-get install -y nodejs
+              sudo apt-get update -y || sudo dnf update -y
+              sudo apt-get install -y nodejs npm || sudo dnf install -y nodejs
               sudo npm install -g pm2
             fi
 
+            # Khởi động lại App
             pm2 delete aura-be || true
             pm2 start "java -jar $JAR_NAME" --name "aura-be"
