@@ -38,3 +38,4 @@ services:
 volumes:
   mongo_data:
   redis_data:
+  - ./serviceAccountKey.json:/app/serviceAccountKey.json
