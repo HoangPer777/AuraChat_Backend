@@ -34,8 +34,11 @@ services:
     depends_on:
       - mongo
       - redis
+    # LUÔN MOUNT FILE Ở ĐÂY (TRONG SERVICE BACKEND)
+    volumes:
+      - ./serviceAccountKey.json:/app/serviceAccountKey.json
 
+# CHỈ KHAI BÁO CÁC NAMED VOLUMES CHO DATABASE Ở ĐÂY
 volumes:
   mongo_data:
   redis_data:
-  - ./serviceAccountKey.json:/app/serviceAccountKey.json
