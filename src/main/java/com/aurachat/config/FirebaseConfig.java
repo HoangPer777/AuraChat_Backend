@@ -13,6 +13,9 @@ import org.springframework.core.io.Resource;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Configuration for Firebase Admin SDK.
@@ -29,6 +32,13 @@ public class FirebaseConfig {
     public void initialize() {
         try {
             InputStream serviceAccount;
+
+            // Prefer project-root path if present
+            Path projectPath = Paths.get("src/main/resources/serviceAccountKey.json");
+            if (Files.exists(projectPath)) {
+                serviceAccount = new FileInputStream(projectPath.toFile());
+                log.info("Loading Firebase service account key from project path: {}", projectPath);
+            } else 
             
             // Try to load from classpath first (for resources in src/main/resources)
             if (serviceAccountKeyPath.startsWith("classpath:")) {

@@ -36,28 +36,30 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }} # PHẢI VIẾT THƯỜNG 'username'
+          username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            # Tạo các thư mục cần thiết
-            mkdir -p /home/${{ secrets.USERNAME }}/be/src/main/resources
-            
-            # Ghi nội dung file cấu hình từ Secret
-            # Lưu ý: Dùng dấu nháy đơn quanh Secret để tránh lỗi ký tự đặc biệt
-            printf '%s' '${{ secrets.FIREBASE_CONFIG }}' > /home/${{ secrets.USERNAME }}/be/src/main/resources/serviceAccountKey.json
-            printf '%s' '${{ secrets.ENV_FILE_CONTENT }}' > /home/${{ secrets.USERNAME }}/be/.env
-            
             cd /home/${{ secrets.USERNAME }}/be
+            
+            # 1. Ghi file JSON Firebase ra thư mục gốc để dễ đọc
+            printf '%s' '${{ secrets.FIREBASE_CONFIG }}' > serviceAccountKey.json
+            
+            # 2. Ghi file .env thành file .properties để Java nạp trực tiếp (tránh lỗi export tiếng Việt)
+            printf '%s' '${{ secrets.ENV_FILE_CONTENT }}' > application-env.properties
+            
+            # Lấy tên file JAR mới nhất
             JAR_NAME=$(ls -t *.jar | head -1)
 
-            # Cài đặt PM2 nếu server chưa có (Dùng lệnh phù hợp với cả Amazon Linux và Ubuntu)
+            # 3. Cài đặt PM2 nếu chưa có
             if ! command -v pm2 >/dev/null 2>&1; then
               sudo apt-get update -y || sudo dnf update -y
               sudo apt-get install -y nodejs npm || sudo dnf install -y nodejs
               sudo npm install -g pm2
             fi
 
-            # Khởi động lại App
+            # 4. Chạy App: 
+            # - Dùng --spring.config.import để nạp biến môi trường từ file sạch sẽ
+            # - File serviceAccountKey.json lúc này nằm ngay thư mục gốc (root)
             pm2 delete aura-be || true
-            pm2 start "sh -c 'export \$(cat .env | xargs) && java -jar $JAR_NAME'" --name "aura-be"
+            pm2 start "java -jar $JAR_NAME --spring.config.import=optional:file:application-env.properties" --name "aura-be"
