@@ -26,23 +26,23 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
+          USER: ${{ secrets.USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "target/*.jar"
-          target: "/home/${{ secrets.USERNAME }}/be"
+          target: "/home/${{ secrets.USER }}/be"
           strip_components: 1
 
       - name: Restart Application via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
+          USER: ${{ secrets.USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            cd /home/${{ secrets.USERNAME }}/be
-            mkdir -p /home/${{ secrets.USERNAME }}/be/src/main/resources
-            printf '%s' "${{ secrets.FIREBASE_CONFIG }}" > /home/${{ secrets.USERNAME }}/be/src/main/resources/serviceAccountKey.json
+            cd /home/${{ secrets.USER }}/be
+            mkdir -p /home/${{ secrets.USER }}/be/src/main/resources
+            printf '%s' "${{ secrets.FIREBASE_CONFIG }}" > /home/${{ secrets.USER }}/be/src/main/resources/serviceAccountKey.json
             JAR_NAME=$(ls -t *.jar | head -1)
 
             # Ensure pm2 is available; install Node.js + pm2 if missing
