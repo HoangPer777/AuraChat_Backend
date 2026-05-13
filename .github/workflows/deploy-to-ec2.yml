@@ -60,4 +60,4 @@ jobs:
 
             # Khởi động lại App
             pm2 delete aura-be || true
-            pm2 start "export $(cat .env | xargs) && java -jar $JAR_NAME" --name "aura-be"
+            pm2 start "sh -c 'export \$(cat .env | xargs) && java -jar $JAR_NAME'" --name "aura-be"
