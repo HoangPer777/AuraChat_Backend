@@ -43,6 +43,7 @@ jobs:
             cd /home/${{ secrets.USER }}/be
             mkdir -p /home/${{ secrets.USER }}/be/src/main/resources
             printf '%s' "${{ secrets.FIREBASE_CONFIG }}" > /home/${{ secrets.USER }}/be/src/main/resources/serviceAccountKey.json
+            printf '%s' "${{ secrets.ENV_FILE_CONTENT }}" > /home/${{ secrets.USER }}/be/.env
             JAR_NAME=$(ls -t *.jar | head -1)
 
             # Ensure pm2 is available; install Node.js + pm2 if missing
