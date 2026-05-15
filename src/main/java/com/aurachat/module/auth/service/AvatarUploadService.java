@@ -3,9 +3,9 @@ package com.aurachat.module.auth.service;
 import com.aurachat.common.exception.ErrorCode;
 import com.aurachat.common.exception.SystemException;
 import com.aurachat.common.exception.ValidationException;
-import io.imagekit.client.ImageKitClient;
-import io.imagekit.models.files.FileUploadParams;
-import io.imagekit.models.files.FileUploadResponse;
+import io.imagekit.sdk.ImageKit;
+import io.imagekit.sdk.models.FileCreateRequest;
+import io.imagekit.sdk.models.results.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @Slf4j
 public class AvatarUploadService {
 
-    private final ImageKitClient imageKit;
+    private final ImageKit imageKit;
     private final AuthService authService;
 
     private static final String AVATAR_FOLDER = "Home/aurachat/avatar";
@@ -59,25 +59,28 @@ public class AvatarUploadService {
                 extension
             );
 
-            // Prepare upload request using new SDK API
-            FileUploadParams uploadParams = FileUploadParams.builder()
-                .file(file.getBytes())
-                .fileName(uniqueFilename)
-                .folder(AVATAR_FOLDER)
-                .useUniqueFileName(false) // We already made it unique
-                .build();
+            // Prepare upload request using SDK 3.0.0 API
+            FileCreateRequest fileCreateRequest = new FileCreateRequest(
+                file.getBytes(),
+                uniqueFilename
+            );
+            fileCreateRequest.setFolder(AVATAR_FOLDER);
+            fileCreateRequest.setUseUniqueFileName(false); // We already made it unique
 
             // Upload to ImageKit
             log.info("Uploading avatar for user {} to ImageKit", userId);
-            FileUploadResponse uploadResult = imageKit.files().upload(uploadParams);
+            Result uploadResult = imageKit.upload(fileCreateRequest);
 
             // Get the URL from the result
-            String avatarUrl = uploadResult.url()
-                .orElseThrow(() -> new SystemException(
+            String avatarUrl = uploadResult.getUrl();
+            if (avatarUrl == null || avatarUrl.isEmpty()) {
+                throw new SystemException(
                     ErrorCode.MEDIA_UPLOAD_FAILED,
                     "ImageKit",
                     "ImageKit did not return a URL for the uploaded file"
-                ));
+                );
+            }
+            
             log.info("Avatar uploaded successfully for user {}: {}", userId, avatarUrl);
 
             // Update user's avatar URL in database
