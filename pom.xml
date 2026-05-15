@@ -75,7 +75,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.imagekit-developer</groupId>
+            <groupId>com.imagekit.sdk</groupId>
             <artifactId>imagekit-java</artifactId>
             <version>3.0.0</version>
         </dependency>
