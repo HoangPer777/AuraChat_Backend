@@ -81,4 +81,14 @@ public class FriendController {
         friendService.unfriend(userId, friendId);
         return ResponseEntity.ok(DataResponse.success("Unfriended successfully"));
     }
+
+    @GetMapping("/discover")
+    public ResponseEntity<DataResponse<List<UserSearchResultDto>>> getDiscoverableUsers(
+        @AuthenticationPrincipal String userId,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        List<UserSearchResultDto> users = friendService.getDiscoverableUsers(userId, page, size);
+        return ResponseEntity.ok(DataResponse.success(users, "Discoverable users retrieved"));
+    }
 }

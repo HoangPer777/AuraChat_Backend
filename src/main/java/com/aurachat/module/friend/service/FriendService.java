@@ -28,13 +28,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -601,5 +598,48 @@ public class FriendService {
 
     private String sendRequestRateKey(String userId) {
         return "friend:rate:send:" + userId;
+    }
+
+    public List<UserSearchResultDto> getDiscoverableUsers(String userId, int page, int size) {
+        if (userId == null) return List.of();
+
+        try {
+            Set<String> excludeIds = new HashSet<>();
+            excludeIds.add(userId);
+
+            // Add friends
+            try {
+                friendshipRepository.findByUserId(userId).forEach(f -> {
+                    if (f.getFriendId() != null) excludeIds.add(f.getFriendId());
+                });
+            } catch (Exception e) {
+                // Ignore DB error
+            }
+
+            // Add pending/sent/received requests
+            try {
+                friendRequestRepository.findBySenderId(userId).forEach(r -> {
+                    if (r.getReceiverId() != null) excludeIds.add(r.getReceiverId());
+                });
+                friendRequestRepository.findByReceiverId(userId).forEach(r -> {
+                    if (r.getSenderId() != null) excludeIds.add(r.getSenderId());
+                });
+            } catch (Exception e) {
+                // Ignore DB error
+            }
+
+            Pageable pageable = PageRequest.of(page, size);
+            return userRepository.findUsersToDiscover(excludeIds, pageable).getContent().stream()
+                .filter(Objects::nonNull)
+                .map(user -> new UserSearchResultDto(
+                    user.getId(),
+                    user.getDisplayName(),
+                    user.getEmail(),
+                    user.getAvatarUrl()
+                ))
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 }

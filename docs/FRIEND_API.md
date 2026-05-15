@@ -264,3 +264,29 @@ Error:
 ```
 
 For `FRIEND_REQUEST_ACCEPTED`, `friend` will contain the newly accepted friend info.
+---
+
+### 7) Discover Users
+**GET** `/api/friends/discover`
+
+Lấy danh sách những người dùng trong hệ thống mà bạn chưa kết bạn và không có lời mời kết bạn nào đang chờ (phục vụ mục đích làm quen/khám phá).
+
+**Query Parameters:**
+- `page` (optional): Số trang (mặc định: 0)
+- `size` (optional): Số lượng item trên mỗi trang (mặc định: 20)
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "message": "Discoverable users retrieved",
+  "data": [
+    {
+      "id": "user_999",
+      "displayName": "Stranger",
+      "email": "stranger@example.com",
+      "avatarUrl": "https://example.com/avatar.jpg"
+    }
+  ]
+}
+```

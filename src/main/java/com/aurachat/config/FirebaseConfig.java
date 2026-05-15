@@ -21,9 +21,21 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void initialize() {
-        try {
-            InputStream serviceAccount = new FileInputStream("serviceAccountKey.json");
-            log.info("Loading Firebase service account key from file: serviceAccountKey.json");
+        String path = "serviceAccountKey.json";
+        java.io.File file = new java.io.File(path);
+        
+        if (!file.exists()) {
+            log.warn("Firebase service account key file NOT FOUND at: {}. Firebase features will be disabled.", path);
+            return;
+        }
+        
+        if (file.isDirectory()) {
+            log.warn("Firebase service account key path '{}' is a DIRECTORY, not a file. Firebase features will be disabled.", path);
+            return;
+        }
+
+        try (InputStream serviceAccount = new FileInputStream(file)) {
+            log.info("Loading Firebase service account key from file: {}", path);
 
             FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
@@ -37,8 +49,8 @@ public class FirebaseConfig {
             }
 
         } catch (IOException e) {
-            log.error("Failed to initialize Firebase Admin SDK: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to initialize Firebase", e);
+            log.error("Failed to initialize Firebase Admin SDK: {}", e.getMessage());
+            // We don't throw exception here to allow the app to start without Firebase
         }
     }
 }
