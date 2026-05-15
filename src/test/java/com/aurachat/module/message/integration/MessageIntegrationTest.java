@@ -41,6 +41,10 @@ class MessageIntegrationTest {
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+        registry.add("imagekit.url-endpoint", () -> "https://ik.imagekit.io/test");
+        registry.add("imagekit.public-key", () -> "test-public-key");
+        registry.add("imagekit.private-key", () -> "test-private-key");
+        registry.add("jwt.secret", () -> "test-jwt-secret-32-bytes-minimum-1234567890");
     }
 
     @Autowired

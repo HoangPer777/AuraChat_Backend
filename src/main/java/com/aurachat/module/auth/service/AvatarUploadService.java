@@ -1,6 +1,5 @@
 package com.aurachat.module.auth.service;
 
-import com.aurachat.common.exception.BusinessLogicException;
 import com.aurachat.common.exception.ErrorCode;
 import com.aurachat.common.exception.SystemException;
 import com.aurachat.common.exception.ValidationException;

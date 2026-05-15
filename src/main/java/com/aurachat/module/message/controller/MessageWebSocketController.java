@@ -1,6 +1,5 @@
 package com.aurachat.module.message.controller;
 
-import com.aurachat.module.message.dto.MessageResponse;
 import com.aurachat.module.message.dto.SendMessageRequest;
 import com.aurachat.module.message.service.MessageService;
 import jakarta.validation.Valid;

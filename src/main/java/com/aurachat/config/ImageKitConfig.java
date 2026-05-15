@@ -13,13 +13,22 @@ import org.springframework.stereotype.Component;
 @Component
 public class ImageKitConfig {
 
+    @Value("${imagekit.url-endpoint}")
+    private String urlEndpoint;
+
+    @Value("${imagekit.public-key}")
+    private String publicKey;
+
     @Value("${imagekit.private-key}")
     private String privateKey;
 
     @Bean
     public ImageKitClient imageKit() {
         return ImageKitOkHttpClient.builder()
-                .privateKey(privateKey)
-                .build();
+            .urlEndpoint(urlEndpoint)
+            .publicKey(publicKey)
+            .privateKey(privateKey)
+            .build();
     }
 }
+    

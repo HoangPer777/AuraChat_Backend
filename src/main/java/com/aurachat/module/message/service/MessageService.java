@@ -3,6 +3,7 @@ package com.aurachat.module.message.service;
 import com.aurachat.common.exception.AuthorizationException;
 import com.aurachat.common.exception.BusinessLogicException;
 import com.aurachat.common.exception.ErrorCode;
+import com.aurachat.common.exception.ValidationException;
 import com.aurachat.module.message.dto.MessageResponse;
 import com.aurachat.module.message.dto.SendMessageRequest;
 import com.aurachat.module.message.entity.Conversation;
@@ -32,6 +33,7 @@ public class MessageService {
     // ─── Send ─────────────────────────────────────────────────────────────────
 
     public MessageResponse sendMessage(String senderId, SendMessageRequest req) {
+        validateMessagePayload(req);
         // Validate membership (throws AuthorizationException if not member)
         Conversation conv = conversationService.findAndValidateMember(req.conversationId(), senderId);
 
@@ -71,6 +73,58 @@ public class MessageService {
         }
 
         return response;
+    }
+
+    private void validateMessagePayload(SendMessageRequest req) {
+        if (req == null) {
+            throw new ValidationException(
+                ErrorCode.VALIDATION_REQUIRED_FIELD,
+                "message",
+                null,
+                "Message payload is required"
+            );
+        }
+
+        if ("TEXT".equals(req.type())) {
+            if (req.content() == null || req.content().trim().isEmpty()) {
+                throw new ValidationException(
+                    ErrorCode.VALIDATION_REQUIRED_FIELD,
+                    "content",
+                    req.content(),
+                    "Message content is required"
+                );
+            }
+        }
+
+        if ("IMAGE".equals(req.type()) || "FILE".equals(req.type())) {
+            if (req.fileUrl() == null || req.fileUrl().trim().isEmpty()) {
+                throw new ValidationException(
+                    ErrorCode.VALIDATION_REQUIRED_FIELD,
+                    "fileUrl",
+                    req.fileUrl(),
+                    "File URL is required"
+                );
+            }
+        }
+
+        if ("FILE".equals(req.type())) {
+            if (req.fileName() == null || req.fileName().trim().isEmpty()) {
+                throw new ValidationException(
+                    ErrorCode.VALIDATION_REQUIRED_FIELD,
+                    "fileName",
+                    req.fileName(),
+                    "File name is required"
+                );
+            }
+            if (req.fileSize() == null || req.fileSize() <= 0) {
+                throw new ValidationException(
+                    ErrorCode.VALIDATION_INVALID_FORMAT,
+                    "fileSize",
+                    req.fileSize(),
+                    "File size must be greater than 0"
+                );
+            }
+        }
     }
 
     // ─── History ──────────────────────────────────────────────────────────────
