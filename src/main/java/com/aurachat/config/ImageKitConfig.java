@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuration for ImageKit client.
  * Initializes ImageKitClient with credentials from application properties.
+ * 
+ * Note: The public key is not needed for server-side operations.
+ * It's only used for client-side URL generation and uploads.
  */
 @Configuration
 public class ImageKitConfig {
@@ -25,6 +28,7 @@ public class ImageKitConfig {
     /**
      * Creates and configures ImageKitClient bean.
      * Uses ImageKitOkHttpClient builder pattern as per SDK 3.0.0 documentation.
+     * Only privateKey is required for server-side file operations.
      * 
      * @return configured ImageKitClient instance
      */
@@ -32,7 +36,6 @@ public class ImageKitConfig {
     public ImageKitClient imageKitClient() {
         return ImageKitOkHttpClient.builder()
             .privateKey(privateKey)
-            .publicKey(publicKey)
             .build();
     }
 }

@@ -64,7 +64,6 @@ public class AvatarUploadService {
                 .file(file.getBytes())
                 .fileName(uniqueFilename)
                 .folder(AVATAR_FOLDER)
-                .useUniqueFileName(false) // We already made it unique
                 .build();
 
             // Upload to ImageKit
