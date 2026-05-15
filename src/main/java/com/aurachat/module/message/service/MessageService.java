@@ -130,6 +130,9 @@ public class MessageService {
     // ─── History ──────────────────────────────────────────────────────────────
 
     public List<MessageResponse> getMessageHistory(String conversationId, String requesterId, Pageable pageable) {
+        if (conversationId != null && conversationId.startsWith("temp_")) {
+            return new ArrayList<>();
+        }
         conversationService.findAndValidateMember(conversationId, requesterId);
         return messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable)
             .stream()

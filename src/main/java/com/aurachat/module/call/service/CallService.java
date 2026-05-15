@@ -97,7 +97,11 @@ public class CallService {
             throw new ValidationException(ErrorCode.VALIDATION_REQUIRED_FIELD, "sdp", sdp, "SDP is required");
         }
 
-        CallState state = requireState(callId);
+        CallState state = getStateIfPresent(callId);
+        if (state == null) {
+            log.warn("Attempted to accept call that no longer exists: callId={}", callId);
+            return;
+        }
         ensureReceiver(state, receiverId);
 
         if (!"RINGING".equals(state.getStatus())) {
@@ -113,7 +117,8 @@ public class CallService {
     }
 
     public void declineCall(String callId, String receiverId) {
-        CallState state = requireState(callId);
+        CallState state = getStateIfPresent(callId);
+        if (state == null) return;
         ensureReceiver(state, receiverId);
 
         if ("DECLINED".equals(state.getStatus()) || "ENDED".equals(state.getStatus()) || "MISSED".equals(state.getStatus())) {
@@ -129,7 +134,8 @@ public class CallService {
     }
 
     public void endCall(String callId, String userId) {
-        CallState state = requireState(callId);
+        CallState state = getStateIfPresent(callId);
+        if (state == null) return;
         ensureParticipant(state, userId);
 
         Instant endedAt = Instant.now();
@@ -162,7 +168,8 @@ public class CallService {
             throw new ValidationException(ErrorCode.VALIDATION_REQUIRED_FIELD, "callId", null, "Call id is required");
         }
 
-        CallState state = requireState(candidate.callId());
+        CallState state = getStateIfPresent(candidate.callId());
+        if (state == null) return;
         String targetUserId = resolvePeer(state, senderId);
 
         IceCandidateDto payload = new IceCandidateDto(
@@ -264,13 +271,6 @@ public class CallService {
         callLogRepository.save(logEntry);
     }
 
-    private CallState requireState(String callId) {
-        CallState state = getStateIfPresent(callId);
-        if (state == null) {
-            throw new BusinessLogicException(ErrorCode.CALL_CONNECTION_FAILED, "Call not found", "CALL_NOT_FOUND");
-        }
-        return state;
-    }
 
     private CallState getStateIfPresent(String callId) {
         String key = CALL_KEY_PREFIX + callId;
