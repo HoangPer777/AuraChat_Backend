@@ -205,14 +205,22 @@ public class FriendService {
     public List<FriendRequestDto> getPendingRequests(String userId) {
         List<FriendRequest> requests = friendRequestRepository
             .findByReceiverIdAndStatus(userId, STATUS_PENDING);
-        cachePendingCount(userId, requests.size());
+        try {
+            cachePendingCount(userId, requests.size());
+        } catch (Exception e) {
+            // Ignore cache error, return data from DB
+        }
         return toFriendRequestDtos(requests);
     }
 
     public List<FriendDto> getFriendList(String userId) {
-        List<FriendDto> cached = getCachedFriendList(userId);
-        if (cached != null) {
-            return cached;
+        try {
+            List<FriendDto> cached = getCachedFriendList(userId);
+            if (cached != null) {
+                return cached;
+            }
+        } catch (Exception e) {
+            // Fallback to database
         }
 
         List<Friendship> friendships = friendshipRepository.findByUserId(userId);
@@ -236,9 +244,13 @@ public class FriendService {
             }
         }
 
-        friends.sort(Comparator.comparing(FriendDto::displayName, String.CASE_INSENSITIVE_ORDER));
-        cacheFriendList(userId, friends);
-        cacheFriendIds(userId, friendIds);
+        friends.sort(Comparator.comparing(FriendDto::displayName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        try {
+            cacheFriendList(userId, friends);
+            cacheFriendIds(userId, friendIds);
+        } catch (Exception e) {
+            // Ignore cache errors
+        }
         return friends;
     }
 
@@ -296,18 +308,24 @@ public class FriendService {
     }
 
     private void enforceSendRequestRateLimit(String userId) {
-        String key = sendRequestRateKey(userId);
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, SEND_REQUEST_WINDOW);
-        }
-        if (count != null && count > SEND_REQUEST_LIMIT_PER_MIN) {
-            throw new ValidationException(
-                ErrorCode.VALIDATION_FAILED,
-                "rateLimit",
-                count,
-                "Too many friend requests. Please try again later."
-            );
+        try {
+            String key = sendRequestRateKey(userId);
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(key, SEND_REQUEST_WINDOW);
+            }
+            if (count != null && count > SEND_REQUEST_LIMIT_PER_MIN) {
+                throw new ValidationException(
+                    ErrorCode.VALIDATION_FAILED,
+                    "rateLimit",
+                    count,
+                    "Too many friend requests. Please try again later."
+                );
+            }
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            // Ignore redis error for rate limiting if it's not a validation error
         }
     }
 
@@ -335,16 +353,24 @@ public class FriendService {
     }
 
     private List<FriendRequestDto> toFriendRequestDtos(List<FriendRequest> requests) {
-        if (requests.isEmpty()) {
+        if (requests == null || requests.isEmpty()) {
             return List.of();
         }
 
         Set<String> userIds = requests.stream()
             .flatMap(request -> java.util.stream.Stream.of(request.getSenderId(), request.getReceiverId()))
+            .filter(Objects::nonNull)
             .collect(Collectors.toSet());
 
+        if (userIds.isEmpty()) {
+            return requests.stream()
+                .map(request -> new FriendRequestDto(request.getId(), null, null, request.getStatus(), request.getCreatedAt()))
+                .collect(Collectors.toList());
+        }
+
         Map<String, User> usersById = userRepository.findAllById(userIds).stream()
-            .collect(Collectors.toMap(User::getId, Function.identity()));
+            .filter(Objects::nonNull)
+            .collect(Collectors.toMap(User::getId, Function.identity(), (u1, u2) -> u1));
 
         return requests.stream()
             .map(request -> new FriendRequestDto(
@@ -415,21 +441,25 @@ public class FriendService {
     }
 
     private void incrementPendingCount(String userId) {
-        String key = pendingCountKey(userId);
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
-            redisTemplate.opsForValue().increment(key);
-            redisTemplate.expire(key, PENDING_COUNT_TTL);
-        }
+        try {
+            String key = pendingCountKey(userId);
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
+                redisTemplate.opsForValue().increment(key);
+                redisTemplate.expire(key, PENDING_COUNT_TTL);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void decrementPendingCount(String userId) {
-        String key = pendingCountKey(userId);
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
-            Long updated = redisTemplate.opsForValue().decrement(key);
-            if (updated != null && updated < 0) {
-                redisTemplate.opsForValue().set(key, "0", PENDING_COUNT_TTL);
+        try {
+            String key = pendingCountKey(userId);
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
+                Long updated = redisTemplate.opsForValue().decrement(key);
+                if (updated != null && updated < 0) {
+                    redisTemplate.opsForValue().set(key, "0", PENDING_COUNT_TTL);
+                }
             }
-        }
+        } catch (Exception ignored) {}
     }
 
     private void cacheSearchResults(String userId, String query, List<UserSearchResultDto> results) {
@@ -453,27 +483,35 @@ public class FriendService {
     }
 
     private void invalidateFriendListCache(String... userIds) {
-        List<String> keys = new ArrayList<>();
-        for (String userId : userIds) {
-            keys.add(friendListKey(userId));
-        }
-        redisTemplate.delete(keys);
+        try {
+            List<String> keys = new ArrayList<>();
+            for (String userId : userIds) {
+                keys.add(friendListKey(userId));
+            }
+            redisTemplate.delete(keys);
+        } catch (Exception ignored) {}
     }
 
     private void invalidateSearchCache(String userId) {
-        Set<String> keys = redisTemplate.keys(searchKey(userId, "*"));
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
+        try {
+            Set<String> keys = redisTemplate.keys(searchKey(userId, "*"));
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+            }
+        } catch (Exception ignored) {}
     }
 
     private Set<String> getCachedFriendIds(String userId) {
-        String key = friendIdsKey(userId);
-        Set<String> friendIds = redisTemplate.opsForSet().members(key);
-        if (friendIds == null || friendIds.isEmpty()) {
+        try {
+            String key = friendIdsKey(userId);
+            Set<String> friendIds = redisTemplate.opsForSet().members(key);
+            if (friendIds == null || friendIds.isEmpty()) {
+                return null;
+            }
+            return friendIds;
+        } catch (Exception e) {
             return null;
         }
-        return friendIds;
     }
 
     private void cacheFriendIds(String userId, Set<String> friendIds) {
@@ -487,17 +525,21 @@ public class FriendService {
     }
 
     private void addFriendIds(String userId, String friendId) {
-        String keyUser = friendIdsKey(userId);
-        String keyFriend = friendIdsKey(friendId);
-        redisTemplate.opsForSet().add(keyUser, friendId);
-        redisTemplate.opsForSet().add(keyFriend, userId);
-        redisTemplate.expire(keyUser, FRIEND_IDS_TTL);
-        redisTemplate.expire(keyFriend, FRIEND_IDS_TTL);
+        try {
+            String keyUser = friendIdsKey(userId);
+            String keyFriend = friendIdsKey(friendId);
+            redisTemplate.opsForSet().add(keyUser, friendId);
+            redisTemplate.opsForSet().add(keyFriend, userId);
+            redisTemplate.expire(keyUser, FRIEND_IDS_TTL);
+            redisTemplate.expire(keyFriend, FRIEND_IDS_TTL);
+        } catch (Exception ignored) {}
     }
 
     private void removeFriendIds(String userId, String friendId) {
-        redisTemplate.opsForSet().remove(friendIdsKey(userId), friendId);
-        redisTemplate.opsForSet().remove(friendIdsKey(friendId), userId);
+        try {
+            redisTemplate.opsForSet().remove(friendIdsKey(userId), friendId);
+            redisTemplate.opsForSet().remove(friendIdsKey(friendId), userId);
+        } catch (Exception ignored) {}
     }
 
     private String friendListKey(String userId) {
