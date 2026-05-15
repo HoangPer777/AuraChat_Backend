@@ -203,17 +203,34 @@ public class FriendService {
     }
 
     public List<FriendRequestDto> getPendingRequests(String userId) {
-        List<FriendRequest> requests = friendRequestRepository
-            .findByReceiverIdAndStatus(userId, STATUS_PENDING);
-        try {
-            cachePendingCount(userId, requests.size());
-        } catch (Exception e) {
-            // Ignore cache error, return data from DB
+        if (userId == null) {
+            return List.of();
         }
-        return toFriendRequestDtos(requests);
+        try {
+            List<FriendRequest> requests = friendRequestRepository
+                .findByReceiverIdAndStatus(userId, STATUS_PENDING);
+            
+            if (requests == null || requests.isEmpty()) {
+                return List.of();
+            }
+
+            try {
+                cachePendingCount(userId, requests.size());
+            } catch (Exception e) {
+                // Ignore cache error
+            }
+            
+            return toFriendRequestDtos(requests);
+        } catch (Exception e) {
+            // Log this if possible, but return empty list to avoid 500
+            return List.of();
+        }
     }
 
     public List<FriendDto> getFriendList(String userId) {
+        if (userId == null) {
+            return List.of();
+        }
         try {
             List<FriendDto> cached = getCachedFriendList(userId);
             if (cached != null) {
@@ -223,35 +240,47 @@ public class FriendService {
             // Fallback to database
         }
 
-        List<Friendship> friendships = friendshipRepository.findByUserId(userId);
-        if (friendships.isEmpty()) {
-            cacheFriendList(userId, List.of());
+        try {
+            List<Friendship> friendships = friendshipRepository.findByUserId(userId);
+            if (friendships == null || friendships.isEmpty()) {
+                try {
+                    cacheFriendList(userId, List.of());
+                } catch (Exception ignored) {}
+                return List.of();
+            }
+
+            Set<String> friendIds = friendships.stream()
+                .map(Friendship::getFriendId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+            if (friendIds.isEmpty()) {
+                return List.of();
+            }
+
+            Map<String, User> usersById = userRepository.findAllById(friendIds).stream()
+                .filter(user -> user != null && user.getId() != null)
+                .collect(Collectors.toMap(User::getId, Function.identity(), (u1, u2) -> u1));
+
+            List<FriendDto> friends = new ArrayList<>();
+            for (Friendship friendship : friendships) {
+                User user = usersById.get(friendship.getFriendId());
+                if (user != null) {
+                    friends.add(toFriendDto(user, friendship.getCreatedAt()));
+                }
+            }
+
+            friends.sort(Comparator.comparing(FriendDto::displayName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+            try {
+                cacheFriendList(userId, friends);
+                cacheFriendIds(userId, friendIds);
+            } catch (Exception e) {
+                // Ignore cache errors
+            }
+            return friends;
+        } catch (Exception e) {
             return List.of();
         }
-
-        Set<String> friendIds = friendships.stream()
-            .map(Friendship::getFriendId)
-            .collect(Collectors.toSet());
-
-        Map<String, User> usersById = userRepository.findAllById(friendIds).stream()
-            .collect(Collectors.toMap(User::getId, Function.identity()));
-
-        List<FriendDto> friends = new ArrayList<>();
-        for (Friendship friendship : friendships) {
-            User user = usersById.get(friendship.getFriendId());
-            if (user != null) {
-                friends.add(toFriendDto(user, friendship.getCreatedAt()));
-            }
-        }
-
-        friends.sort(Comparator.comparing(FriendDto::displayName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
-        try {
-            cacheFriendList(userId, friends);
-            cacheFriendIds(userId, friendIds);
-        } catch (Exception e) {
-            // Ignore cache errors
-        }
-        return friends;
     }
 
     public void unfriend(String userId, String friendId) {
@@ -357,30 +386,42 @@ public class FriendService {
             return List.of();
         }
 
-        Set<String> userIds = requests.stream()
-            .flatMap(request -> java.util.stream.Stream.of(request.getSenderId(), request.getReceiverId()))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
+        try {
+            Set<String> userIds = requests.stream()
+                .flatMap(request -> java.util.stream.Stream.of(request.getSenderId(), request.getReceiverId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        if (userIds.isEmpty()) {
+            if (userIds.isEmpty()) {
+                return requests.stream()
+                    .map(request -> new FriendRequestDto(request.getId(), null, null, request.getStatus(), request.getCreatedAt()))
+                    .collect(Collectors.toList());
+            }
+
+            Map<String, User> usersById = userRepository.findAllById(userIds).stream()
+                .filter(user -> user != null && user.getId() != null)
+                .collect(Collectors.toMap(User::getId, Function.identity(), (u1, u2) -> u1));
+
+            return requests.stream()
+                .map(request -> {
+                    try {
+                        return new FriendRequestDto(
+                            request.getId(),
+                            toUserSummaryDto(usersById.get(request.getSenderId())),
+                            toUserSummaryDto(usersById.get(request.getReceiverId())),
+                            request.getStatus(),
+                            request.getCreatedAt()
+                        );
+                    } catch (Exception e) {
+                        return new FriendRequestDto(request.getId(), null, null, request.getStatus(), request.getCreatedAt());
+                    }
+                })
+                .collect(Collectors.toList());
+        } catch (Exception e) {
             return requests.stream()
                 .map(request -> new FriendRequestDto(request.getId(), null, null, request.getStatus(), request.getCreatedAt()))
                 .collect(Collectors.toList());
         }
-
-        Map<String, User> usersById = userRepository.findAllById(userIds).stream()
-            .filter(Objects::nonNull)
-            .collect(Collectors.toMap(User::getId, Function.identity(), (u1, u2) -> u1));
-
-        return requests.stream()
-            .map(request -> new FriendRequestDto(
-                request.getId(),
-                toUserSummaryDto(usersById.get(request.getSenderId())),
-                toUserSummaryDto(usersById.get(request.getReceiverId())),
-                request.getStatus(),
-                request.getCreatedAt()
-            ))
-            .collect(Collectors.toList());
     }
 
     private FriendRequestDto.UserSummaryDto toUserSummaryDto(User user) {
