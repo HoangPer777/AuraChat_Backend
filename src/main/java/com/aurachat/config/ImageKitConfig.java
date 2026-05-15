@@ -1,10 +1,15 @@
 package com.aurachat.config;
 
-import io.imagekit.sdk.ImageKit; // Phải có chữ .sdk
+import io.imagekit.client.ImageKitClient;
+import io.imagekit.client.okhttp.ImageKitOkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configuration for ImageKit client.
+ * Initializes ImageKitClient with credentials from application properties.
+ */
 @Configuration
 public class ImageKitConfig {
 
@@ -17,9 +22,17 @@ public class ImageKitConfig {
     @Value("${imagekit.private-key}")
     private String privateKey;
 
+    /**
+     * Creates and configures ImageKitClient bean.
+     * Uses ImageKitOkHttpClient builder pattern as per SDK 3.0.0 documentation.
+     * 
+     * @return configured ImageKitClient instance
+     */
     @Bean
-    public ImageKit imageKit() {
-        // Trong bản 3.0.0, constructor nhận 3 tham số String là cách chuẩn nhất
-        return new ImageKit(publicKey, privateKey, urlEndpoint);
+    public ImageKitClient imageKitClient() {
+        return ImageKitOkHttpClient.builder()
+            .privateKey(privateKey)
+            .publicKey(publicKey)
+            .build();
     }
 }

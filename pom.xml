@@ -74,10 +74,11 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
-       <dependency>
-            <groupId>com.github.imagekit-developer.imagekit-java</groupId>
-            <artifactId>imagekit-java</artifactId>
-            <version>3.0.0</version> 
+        <!-- Source: https://mvnrepository.com/artifact/com.github.imagekit-developer/imagekit-java -->
+        <dependency>
+            <groupId>io.imagekit</groupId>
+            <artifactId>image-kit-java</artifactId>
+            <version>3.0.0</version>
         </dependency>
 
         <!-- Firebase Admin SDK -->
