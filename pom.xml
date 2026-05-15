@@ -74,10 +74,9 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
-        <!-- ImageKit SDK -->
         <dependency>
-            <groupId>io.imagekit</groupId>
-            <artifactId>image-kit-java</artifactId>
+            <groupId>com.github.imagekit-developer</groupId>
+            <artifactId>imagekit-java</artifactId>
             <version>3.0.0</version>
         </dependency>
 
