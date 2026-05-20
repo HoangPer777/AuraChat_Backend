@@ -17,13 +17,16 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
 
     /**
-     * Primary ObjectMapper used throughout the application, including FriendService.
+     * Primary ObjectMapper used throughout the application.
+     * Named "redisObjectMapper" so that @RequiredArgsConstructor-based injection
+     * in MessagePublisher, MessageSubscriber, PresencePublisher, PresenceSubscriber,
+     * and CallService resolves correctly by field name.
      * Registers JavaTimeModule for Instant serialization and ParameterNamesModule
      * to support deserialization of Java records (FriendDto, UserSearchResultDto, etc.).
      */
-    @Bean
+    @Bean("redisObjectMapper")
     @Primary
-    public ObjectMapper objectMapper() {
+    public ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.registerModule(new ParameterNamesModule());
