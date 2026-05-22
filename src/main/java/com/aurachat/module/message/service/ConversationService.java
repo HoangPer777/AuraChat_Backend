@@ -3,6 +3,8 @@ package com.aurachat.module.message.service;
 import com.aurachat.common.exception.AuthorizationException;
 import com.aurachat.common.exception.BusinessLogicException;
 import com.aurachat.common.exception.ErrorCode;
+import com.aurachat.module.auth.entity.User;
+import com.aurachat.module.auth.repository.UserRepository;
 import com.aurachat.module.message.dto.AddMemberRequest;
 import com.aurachat.module.message.dto.ConversationResponse;
 import com.aurachat.module.message.dto.CreateConversationRequest;
@@ -15,12 +17,16 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ConversationService {
 
     private final ConversationRepository conversationRepository;
+    private final UserRepository userRepository;
 
     // ─── Create ──────────────────────────────────────────────────────────────
 
@@ -32,7 +38,7 @@ public class ConversationService {
             }
             // Idempotent: trả về existing nếu đã tồn tại
             return conversationRepository.findPrivateConversation(requesterId, req.targetUserId())
-                .map(ConversationResponse::from)
+                .map(this::enrichedResponse)
                 .orElseGet(() -> {
                     Conversation c = Conversation.builder()
                         .type("PRIVATE")
@@ -44,7 +50,7 @@ public class ConversationService {
                         .createdAt(Instant.now())
                         .updatedAt(Instant.now())
                         .build();
-                    return ConversationResponse.from(conversationRepository.save(c));
+                    return enrichedResponse(conversationRepository.save(c));
                 });
         }
 
@@ -69,21 +75,21 @@ public class ConversationService {
             .updatedAt(Instant.now())
             .build();
 
-        return ConversationResponse.from(conversationRepository.save(c));
+        return enrichedResponse(conversationRepository.save(c));
     }
 
     // ─── Read ─────────────────────────────────────────────────────────────────
 
     public ConversationResponse getConversationById(String conversationId, String requesterId) {
         Conversation c = findAndValidateMember(conversationId, requesterId);
-        return ConversationResponse.from(c);
+        return enrichedResponse(c);
     }
 
     public List<ConversationResponse> getUserConversations(String userId) {
         return conversationRepository
             .findByMembersUserId(userId, Sort.by(Sort.Direction.DESC, "updatedAt"))
             .stream()
-            .map(ConversationResponse::from)
+            .map(this::enrichedResponse)
             .toList();
     }
 
@@ -104,7 +110,7 @@ public class ConversationService {
             .userId(req.userId()).role("MEMBER").joinedAt(Instant.now()).build());
         c.setMembers(updated);
         c.setUpdatedAt(Instant.now());
-        return ConversationResponse.from(conversationRepository.save(c));
+        return enrichedResponse(conversationRepository.save(c));
     }
 
     public ConversationResponse removeMemberFromGroup(String conversationId, String requesterId, String targetUserId) {
@@ -124,7 +130,7 @@ public class ConversationService {
             .toList();
         c.setMembers(updated);
         c.setUpdatedAt(Instant.now());
-        return ConversationResponse.from(conversationRepository.save(c));
+        return enrichedResponse(conversationRepository.save(c));
     }
 
     public ConversationResponse leaveGroup(String conversationId, String userId) {
@@ -155,5 +161,24 @@ public class ConversationService {
                 "Only group admin can perform this action");
         }
         return c;
+    }
+
+    /**
+     * Build ConversationResponse enriched with user displayName and avatarUrl for each member.
+     * Performs a single batch lookup to avoid N+1 queries.
+     */
+    private ConversationResponse enrichedResponse(Conversation c) {
+        if (c.getMembers() == null || c.getMembers().isEmpty()) {
+            return ConversationResponse.from(c);
+        }
+        Set<String> memberIds = c.getMembers().stream()
+            .map(Conversation.Member::getUserId)
+            .collect(Collectors.toSet());
+        Map<String, String[]> userInfoMap = userRepository.findAllById(memberIds).stream()
+            .collect(Collectors.toMap(
+                User::getId,
+                u -> new String[]{ u.getDisplayName(), u.getAvatarUrl() }
+            ));
+        return ConversationResponse.from(c, userInfoMap);
     }
 }

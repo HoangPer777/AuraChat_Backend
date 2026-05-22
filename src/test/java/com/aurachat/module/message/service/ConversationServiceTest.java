@@ -2,6 +2,8 @@ package com.aurachat.module.message.service;
 
 import com.aurachat.common.exception.AuthorizationException;
 import com.aurachat.common.exception.BusinessLogicException;
+import com.aurachat.module.auth.entity.User;
+import com.aurachat.module.auth.repository.UserRepository;
 import com.aurachat.module.message.dto.AddMemberRequest;
 import com.aurachat.module.message.dto.ConversationResponse;
 import com.aurachat.module.message.dto.CreateConversationRequest;
@@ -29,6 +31,9 @@ class ConversationServiceTest {
 
     @Mock
     private ConversationRepository conversationRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ConversationService conversationService;
@@ -73,6 +78,7 @@ class ConversationServiceTest {
         when(conversationRepository.findPrivateConversation(USER_A, USER_B)).thenReturn(Optional.empty());
         Conversation saved = buildPrivateConv("conv1");
         when(conversationRepository.save(any())).thenReturn(saved);
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         CreateConversationRequest req = new CreateConversationRequest("PRIVATE", USER_B, null, null);
         ConversationResponse result = conversationService.createConversation(USER_A, req);
@@ -86,6 +92,7 @@ class ConversationServiceTest {
     void createConversation_private_returnsExistingWhenAlreadyExists() {
         Conversation existing = buildPrivateConv("existingConv");
         when(conversationRepository.findPrivateConversation(USER_A, USER_B)).thenReturn(Optional.of(existing));
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         CreateConversationRequest req = new CreateConversationRequest("PRIVATE", USER_B, null, null);
         ConversationResponse result = conversationService.createConversation(USER_A, req);
@@ -114,6 +121,7 @@ class ConversationServiceTest {
     void createConversation_group_createsWithAdminRole() {
         Conversation saved = buildGroupConv("groupConv1");
         when(conversationRepository.save(any())).thenReturn(saved);
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         CreateConversationRequest req = new CreateConversationRequest("GROUP", null, "Group", List.of(USER_B));
         ConversationResponse result = conversationService.createConversation(USER_A, req);
@@ -139,6 +147,7 @@ class ConversationServiceTest {
     void getConversationById_returnsConvWhenMember() {
         Conversation conv = buildPrivateConv("conv1");
         when(conversationRepository.findById("conv1")).thenReturn(Optional.of(conv));
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         ConversationResponse result = conversationService.getConversationById("conv1", USER_A);
         assertThat(result.id()).isEqualTo("conv1");
@@ -160,6 +169,7 @@ class ConversationServiceTest {
         Conversation conv = buildGroupConv("groupConv1");
         when(conversationRepository.findById("groupConv1")).thenReturn(Optional.of(conv));
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         ConversationResponse result = conversationService.addMemberToGroup("groupConv1", USER_A, new AddMemberRequest(USER_C));
         assertThat(result.members()).anyMatch(m -> m.userId().equals(USER_C));
@@ -172,6 +182,7 @@ class ConversationServiceTest {
         Conversation conv = buildGroupConv("groupConv1");
         when(conversationRepository.findById("groupConv1")).thenReturn(Optional.of(conv));
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         ConversationResponse result = conversationService.removeMemberFromGroup("groupConv1", USER_A, USER_B);
         assertThat(result.members()).noneMatch(m -> m.userId().equals(USER_B));
@@ -182,6 +193,7 @@ class ConversationServiceTest {
         Conversation conv = buildGroupConv("groupConv1");
         when(conversationRepository.findById("groupConv1")).thenReturn(Optional.of(conv));
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         ConversationResponse result = conversationService.leaveGroup("groupConv1", USER_B);
         assertThat(result.members()).noneMatch(m -> m.userId().equals(USER_B));
