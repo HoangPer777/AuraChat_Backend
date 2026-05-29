@@ -11,6 +11,8 @@ import com.aurachat.module.friend.dto.FriendDto;
 import com.aurachat.module.friend.dto.FriendRequestDto;
 import com.aurachat.module.friend.dto.SendFriendRequestDto;
 import com.aurachat.module.friend.dto.UserSearchResultDto;
+import com.aurachat.module.message.dto.CreateConversationRequest;
+import com.aurachat.module.message.service.ConversationService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,6 +57,7 @@ public class FriendService {
     private final UserRepository userRepository;
     private final MongoTemplate mongoTemplate;
     private final FriendWebSocketController friendWebSocketController;
+    private final ConversationService conversationService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -100,6 +103,8 @@ public class FriendService {
         friendRequestRepository.save(friendRequest);
         FriendRequestDto response = toFriendRequestDto(friendRequest);
         friendWebSocketController.notifyFriendRequestCreated(receiverId, response);
+        conversationService.createConversation(senderId,
+            new CreateConversationRequest("PRIVATE", receiverId, null, null));
         incrementPendingCount(receiverId);
         invalidateSearchCache(senderId);
         invalidateSearchCache(receiverId);
