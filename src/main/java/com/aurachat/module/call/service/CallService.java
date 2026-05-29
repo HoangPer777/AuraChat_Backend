@@ -118,7 +118,9 @@ public class CallService {
 
     public void declineCall(String callId, String receiverId) {
         CallState state = getStateIfPresent(callId);
-        if (state == null) return;
+        if (state == null) {
+            throw new BusinessLogicException(ErrorCode.CALL_NOT_FOUND, "Call not found or already ended", callId);
+        }
         ensureReceiver(state, receiverId);
 
         if ("DECLINED".equals(state.getStatus()) || "ENDED".equals(state.getStatus()) || "MISSED".equals(state.getStatus())) {
@@ -135,7 +137,9 @@ public class CallService {
 
     public void endCall(String callId, String userId) {
         CallState state = getStateIfPresent(callId);
-        if (state == null) return;
+        if (state == null) {
+            throw new BusinessLogicException(ErrorCode.CALL_NOT_FOUND, "Call not found or already ended", callId);
+        }
         ensureParticipant(state, userId);
 
         Instant endedAt = Instant.now();
@@ -169,7 +173,9 @@ public class CallService {
         }
 
         CallState state = getStateIfPresent(candidate.callId());
-        if (state == null) return;
+        if (state == null) {
+            throw new BusinessLogicException(ErrorCode.CALL_NOT_FOUND, "Call not found or already ended", candidate.callId());
+        }
         String targetUserId = resolvePeer(state, senderId);
 
         IceCandidateDto payload = new IceCandidateDto(

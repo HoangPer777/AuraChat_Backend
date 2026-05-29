@@ -152,6 +152,11 @@ public enum ErrorCode {
      * Failed to establish call connection
      */
     CALL_CONNECTION_FAILED("CALL_002", "Failed to establish call connection", HttpStatus.UNPROCESSABLE_ENTITY),
+
+    /**
+     * Call not found or already ended
+     */
+    CALL_NOT_FOUND("CALL_003", "Call not found or already ended", HttpStatus.NOT_FOUND),
     
     // ========== Business Logic - Media Management ==========
     
