@@ -11,9 +11,6 @@ services:
       - mongo_data:/data/db
     environment:
       MONGO_INITDB_DATABASE: aurachat
-    # Gắn Mongo vào mạng chung
-    networks:
-      - aurachat-network
 
   redis:
     image: redis:7.2-alpine
@@ -23,9 +20,6 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    # Gắn Redis vào mạng chung
-    networks:
-      - aurachat-network
 
   backend:
     build:
@@ -42,17 +36,6 @@ services:
       - redis
     volumes:
       - ./serviceAccountKey.json:/app/serviceAccountKey.json
-    # Gắn Backend vào mạng chung để FE và DB tìm thấy nhau
-    networks:
-      - aurachat-network
-
-# =========================================================
-# KHAI BÁO MẠNG CHUNG Ở ĐÂY
-# =========================================================
-networks:
-  aurachat-network:
-    name: aurachat-network  # Định danh cố định tên mạng này trong Docker
-    driver: bridge
 
 # CHỈ KHAI BÁO CÁC NAMED VOLUMES CHO DATABASE Ở ĐÂY
 volumes:
