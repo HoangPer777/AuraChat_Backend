@@ -38,6 +38,7 @@ public class Message {
     @Builder.Default
     private boolean isDeleted = false;
 
+    @Indexed
     private Instant createdAt;
 
     // ─── Embedded: trạng thái đã xem ─────────────────────────────────────────

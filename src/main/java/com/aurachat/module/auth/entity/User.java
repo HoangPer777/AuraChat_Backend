@@ -38,16 +38,19 @@ public class User {
     private String providerId;
 
     /** USER | ADMIN */
+    @Indexed
     @Builder.Default
     private String role = "USER";
 
     /** ACTIVE | DEACTIVATED | TERMINATED */
+    @Indexed
     @Builder.Default
     private String status = "ACTIVE";
 
     /** Thời điểm hoạt động cuối - dùng cho Presence */
     private Instant lastSeen;
 
+    @Indexed
     private Instant createdAt;
 
     private Instant updatedAt;

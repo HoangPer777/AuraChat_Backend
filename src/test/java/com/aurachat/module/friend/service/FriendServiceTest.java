@@ -13,6 +13,7 @@ import com.aurachat.module.friend.entity.FriendRequest;
 import com.aurachat.module.friend.entity.Friendship;
 import com.aurachat.module.friend.repository.FriendRequestRepository;
 import com.aurachat.module.friend.repository.FriendshipRepository;
+import com.aurachat.module.message.service.ConversationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,8 @@ class FriendServiceTest {
     private MongoTemplate mongoTemplate;
     @Mock
     private FriendWebSocketController friendWebSocketController;
+    @Mock
+    private ConversationService conversationService;
     @Mock
     private StringRedisTemplate redisTemplate;
     @Mock

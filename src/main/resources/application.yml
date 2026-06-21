@@ -38,3 +38,8 @@ imagekit:
 
 firebase:
   service-account-key-path: ${FIREBASE_SERVICE_ACCOUNT_KEY_PATH}
+
+admin:
+  bootstrap:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}

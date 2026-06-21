@@ -417,16 +417,17 @@ class ErrorCodeTest {
         
         // Then
         // Based on the design document, we should have:
-        // 6 Auth errors + 4 Validation errors + 3 User errors + 4 Friend errors
-        // + 3 Message errors + 2 Call errors + 3 Media errors + 4 System errors = 29
-        assertEquals(29, count, "Should have 29 error codes defined");
+        // 6 Auth errors + 4 Validation errors + 3 User errors
+        // + 5 Admin errors + 4 Friend errors + 6 Message errors + 3 Call errors
+        // + 3 Media errors + 4 System errors = 38
+        assertEquals(38, count, "Should have 38 error codes defined");
     }
     
     @Test
     void testErrorCodeModuleGrouping() {
         // Given
         Set<String> expectedPrefixes = new HashSet<>(Arrays.asList(
-            "AUTH_", "VAL_", "USER_", "FRIEND_", "MSG_", "CALL_", "MEDIA_", "SYS_"
+            "AUTH_", "VAL_", "USER_", "ADMIN_", "FRIEND_", "MSG_", "CALL_", "MEDIA_", "SYS_"
         ));
         
         // When

@@ -86,6 +86,14 @@ public enum ErrorCode {
      * Failed to update user profile information
      */
     USER_PROFILE_UPDATE_FAILED("USER_003", "Failed to update user profile", HttpStatus.UNPROCESSABLE_ENTITY),
+
+    // ========== Admin Management ==========
+
+    ADMIN_INVALID_STATUS_TRANSITION("ADMIN_001", "Invalid user status transition", HttpStatus.UNPROCESSABLE_ENTITY),
+    ADMIN_SELF_ACTION_FORBIDDEN("ADMIN_002", "Administrators cannot perform this action on themselves", HttpStatus.FORBIDDEN),
+    ADMIN_IP_ALREADY_BANNED("ADMIN_003", "IP address is already banned", HttpStatus.UNPROCESSABLE_ENTITY),
+    ADMIN_IP_NOT_BANNED("ADMIN_004", "IP address is not banned", HttpStatus.NOT_FOUND),
+    ADMIN_IP_BANNED("ADMIN_005", "IP address is banned", HttpStatus.FORBIDDEN),
     
     // ========== Business Logic - Friend Management ==========
     

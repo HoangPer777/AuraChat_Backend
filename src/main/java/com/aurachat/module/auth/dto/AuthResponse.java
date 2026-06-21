@@ -13,7 +13,9 @@ public record AuthResponse(
         String email,
         String displayName,
         String avatarUrl,
-        String bio
+        String bio,
+        String role,
+        String status
     ) {}
 
     public static AuthResponse of(String accessToken, String refreshToken, User user) {
@@ -22,7 +24,7 @@ public record AuthResponse(
             refreshToken,
             "Bearer",
             new UserInfo(user.getId(), user.getEmail(), user.getDisplayName(),
-                         user.getAvatarUrl(), user.getBio())
+                         user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus())
         );
     }
 }

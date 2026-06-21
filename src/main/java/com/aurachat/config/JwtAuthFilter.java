@@ -5,8 +5,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import com.aurachat.module.auth.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,6 +20,7 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -28,8 +31,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwtUtil.isValid(token)) {
                 String userId = jwtUtil.extractUserId(token);
-                var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                userRepository.findById(userId)
+                    .filter(user -> "ACTIVE".equalsIgnoreCase(user.getStatus()))
+                    .ifPresent(user -> {
+                        String role = user.getRole() == null ? "USER" : user.getRole().toUpperCase();
+                        var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                        var auth = new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    });
             }
         }
         chain.doFilter(request, response);

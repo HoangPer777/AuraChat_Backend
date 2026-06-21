@@ -69,6 +69,8 @@ public class AuthService {
             );
         }
 
+        ensureAccountActive(user, "login");
+
         String accessToken = jwtUtil.generateAccessToken(user.getId());
         String refreshToken = createRefreshToken(user.getId());
         return AuthResponse.of(accessToken, refreshToken, user);
@@ -99,6 +101,8 @@ public class AuthService {
                 "User associated with refresh token not found"
             ));
 
+        ensureAccountActive(user, "refresh token");
+
         // Rotate refresh token
         refreshTokenRepository.delete(rt);
         String newAccessToken = jwtUtil.generateAccessToken(user.getId());
@@ -116,7 +120,7 @@ public class AuthService {
             ));
         return new AuthResponse.UserInfo(
             user.getId(), user.getEmail(), user.getDisplayName(),
-            user.getAvatarUrl(), user.getBio()
+            user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus()
         );
     }
 
@@ -136,7 +140,7 @@ public class AuthService {
 
         return new AuthResponse.UserInfo(
             user.getId(), user.getEmail(), user.getDisplayName(),
-            user.getAvatarUrl(), user.getBio()
+            user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus()
         );
     }
 
@@ -170,5 +174,15 @@ public class AuthService {
             .build();
         refreshTokenRepository.save(rt);
         return rt.getToken();
+    }
+
+    private void ensureAccountActive(User user, String attemptedAction) {
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new AuthenticationException(
+                ErrorCode.AUTH_ACCOUNT_LOCKED,
+                "Account status is " + user.getStatus(),
+                attemptedAction
+            );
+        }
     }
 }

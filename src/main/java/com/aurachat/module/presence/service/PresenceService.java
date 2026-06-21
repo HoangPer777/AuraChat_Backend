@@ -18,6 +18,7 @@ import java.util.List;
 public class PresenceService {
 
     private static final String PRESENCE_KEY_PREFIX = "presence:";
+    private static final String ONLINE_USERS_KEY = "presence:online-users";
     private static final Duration PRESENCE_TTL = Duration.ofSeconds(30);
 
     private final RedisTemplate<String, String> redisTemplate;
@@ -34,9 +35,15 @@ public class PresenceService {
         String key = PRESENCE_KEY_PREFIX + userId;
         if ("online".equals(status)) {
             redisTemplate.opsForValue().set(key, "online", PRESENCE_TTL);
+            var onlineUsers = redisTemplate.opsForZSet();
+            if (onlineUsers != null) {
+                onlineUsers.add(ONLINE_USERS_KEY, userId, Instant.now().plus(PRESENCE_TTL).toEpochMilli());
+            }
             log.debug("Presence set online: userId={}", userId);
         } else {
             redisTemplate.delete(key);
+            var onlineUsers = redisTemplate.opsForZSet();
+            if (onlineUsers != null) onlineUsers.remove(ONLINE_USERS_KEY, userId);
             log.debug("Presence set offline: userId={}", userId);
         }
     }
@@ -54,6 +61,10 @@ public class PresenceService {
             // Key đã hết hạn — tạo lại
             redisTemplate.opsForValue().set(key, "online", PRESENCE_TTL);
             log.debug("Presence key recreated on heartbeat: userId={}", userId);
+        }
+        var onlineUsers = redisTemplate.opsForZSet();
+        if (onlineUsers != null) {
+            onlineUsers.add(ONLINE_USERS_KEY, userId, Instant.now().plus(PRESENCE_TTL).toEpochMilli());
         }
     }
 
@@ -78,6 +89,18 @@ public class PresenceService {
         return friendIds.stream()
             .filter(this::isOnline)
             .toList();
+    }
+
+    public long getOnlineUsersCount() {
+        var onlineUsers = redisTemplate.opsForZSet();
+        if (onlineUsers == null) return 0;
+        onlineUsers.removeRangeByScore(ONLINE_USERS_KEY, 0, Instant.now().toEpochMilli());
+        Long count = onlineUsers.zCard(ONLINE_USERS_KEY);
+        return count == null ? 0 : count;
+    }
+
+    public void removePresence(String userId) {
+        updatePresence(userId, "offline");
     }
 
     // ─── Async ────────────────────────────────────────────────────────────────
