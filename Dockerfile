@@ -1,13 +1,10 @@
-# syntax=docker/dockerfile:1.7
-
 # Stage 1: Build code (Sử dụng JDK 21 và Maven)
 FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
-# Copy file cấu hình Maven để tải thư viện trước (tối ưu cache)
+# Copy file cấu hình Maven để tải thư viện trước (tối ưu cache layer)
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 \
-    for attempt in 1 2 3; do \
+RUN for attempt in 1 2 3; do \
       mvn -B -Dmaven.wagon.http.retryHandler.count=5 dependency:go-offline && break; \
       if [ "$attempt" = "3" ]; then exit 1; fi; \
       echo "Maven download failed (attempt $attempt/3), retrying..."; \
@@ -16,8 +13,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 # Copy code và thực hiện build file .jar
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -Dmaven.wagon.http.retryHandler.count=5 clean package -DskipTests
+RUN mvn -B -Dmaven.wagon.http.retryHandler.count=5 clean package -DskipTests
 
 # Stage 2: Run (Chỉ giữ lại JRE để giảm dung lượng image)
 FROM eclipse-temurin:21-jre-alpine
