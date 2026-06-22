@@ -55,10 +55,10 @@ class DataResponseTest {
     @Test
     void testSuccessWithDataOnly() {
         // Given
-        String data = "Test data";
+        List<String> data = List.of("Test data");
         
         // When
-        DataResponse<String> response = DataResponse.success(data);
+        DataResponse<List<String>> response = DataResponse.success(data);
         
         // Then
         assertTrue(response.isSuccess());

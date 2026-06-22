@@ -59,12 +59,22 @@ public class FirebaseAuthService {
             // Find or create user
             User user = findOrCreateUser(firebaseUid, email, name, picture, provider);
 
+            if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+                throw new AuthenticationException(
+                    ErrorCode.AUTH_ACCOUNT_LOCKED,
+                    "Account status is " + user.getStatus(),
+                    "firebase authentication"
+                );
+            }
+
             // Generate JWT tokens
             String accessToken = jwtUtil.generateAccessToken(user.getId());
             String refreshToken = createRefreshToken(user.getId());
 
             return AuthResponse.of(accessToken, refreshToken, user);
 
+        } catch (AuthenticationException e) {
+            throw e;
         } catch (FirebaseAuthException e) {
             log.error("Firebase token verification failed: {}", e.getMessage());
             throw new AuthenticationException(

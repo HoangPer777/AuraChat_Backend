@@ -9,7 +9,9 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
+import com.aurachat.module.auth.repository.UserRepository;
 
 import java.util.List;
 
@@ -24,6 +26,7 @@ import java.util.List;
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -35,7 +38,16 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                 String token = authHeader.substring(7);
                 if (jwtUtil.isValid(token)) {
                     String userId = jwtUtil.extractUserId(token);
-                    var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
+                    var user = userRepository.findById(userId)
+                        .filter(value -> "ACTIVE".equalsIgnoreCase(value.getStatus()))
+                        .orElse(null);
+                    if (user == null) {
+                        log.warn("WebSocket CONNECT rejected: inactive or missing userId={}", userId);
+                        return null;
+                    }
+                    String role = user.getRole() == null ? "USER" : user.getRole().toUpperCase();
+                    var auth = new UsernamePasswordAuthenticationToken(userId, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                     accessor.setUser(auth);
                     log.debug("WebSocket authenticated: userId={}", userId);
                 } else {
