@@ -29,13 +29,30 @@ public class BannedIpFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        if (bannedIpRepository.existsByIpAddress(normalize(request.getRemoteAddr()))) {
+        String clientIp = resolveClientIp(request);
+        if (bannedIpRepository.existsByIpAddress(normalize(clientIp))) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write("{\"success\":false,\"errorCode\":\"ADMIN_005\",\"message\":\"IP address is banned\"}");
             return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Resolves the real client IP address, accounting for reverse proxies (e.g. nginx).
+     * Checks X-Forwarded-For and X-Real-IP headers before falling back to remoteAddr.
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isBlank()) {
+            return xRealIp;
+        }
+        return request.getRemoteAddr();
     }
 
     private String normalize(String ipAddress) {
