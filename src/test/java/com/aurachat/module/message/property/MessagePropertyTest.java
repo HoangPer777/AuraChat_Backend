@@ -14,6 +14,7 @@ import net.jqwik.api.constraints.NotBlank;
 import net.jqwik.api.constraints.Size;
 import org.mockito.Mockito;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -34,16 +35,17 @@ class MessagePropertyTest {
     private final ConversationRepository conversationRepository = Mockito.mock(ConversationRepository.class);
     private final ConversationService conversationService = Mockito.mock(ConversationService.class);
     private final MessagePublisher messagePublisher = Mockito.mock(MessagePublisher.class);
+    private final SimpMessagingTemplate messagingTemplate = Mockito.mock(SimpMessagingTemplate.class);
     private final MessageService messageService = new MessageService(
-        messageRepository, conversationRepository, conversationService, messagePublisher
+        messageRepository, conversationRepository, conversationService, messagePublisher, messagingTemplate
     );
 
     /**
-     * Property 1: Tin nhắn luôn được trả về theo thứ tự createdAt giảm dần.
-     * Với bất kỳ danh sách timestamps nào, kết quả phải sorted DESC.
+     * Property 1: Tin nhắn luôn được trả về theo thứ tự createdAt tăng dần (cũ → mới).
+     * Với bất kỳ danh sách timestamps nào, kết quả phải sorted ASC.
      */
     @Property
-    void messagesShouldBeOrderedByCreatedAtDesc(
+    void messagesShouldBeOrderedByCreatedAtAsc(
             @ForAll @Size(min = 1, max = 20) List<Long> epochSeconds) {
 
         String convId = "conv-prop-test";
