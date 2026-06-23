@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -73,8 +74,12 @@ public class MediaService {
         "audio/ogg",
         "audio/mpeg",
         "audio/mp4",
+        "audio/mp3",
         "audio/wav",
-        "audio/x-wav"
+        "audio/x-wav",
+        "audio/aac",
+        "audio/x-m4a",
+        "audio/m4a"
     );
 
     private static final Set<String> ALLOWED_AUDIO_EXTENSIONS = Set.of(
@@ -245,7 +250,10 @@ public class MediaService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !allowedTypes.contains(contentType.toLowerCase())) {
+        String extension = getFileExtensionLower(file.getOriginalFilename());
+
+        if (!isAllowedContentType(contentType, allowedTypes)
+            && !isGenericBinaryWithAllowedExtension(contentType, extension, allowedExtensions)) {
             throw new ValidationException(
                 ErrorCode.MEDIA_INVALID_TYPE,
                 "file",
@@ -254,7 +262,6 @@ public class MediaService {
             );
         }
 
-        String extension = getFileExtensionLower(file.getOriginalFilename());
         if (extension.isEmpty()) {
             throw new ValidationException(
                 ErrorCode.MEDIA_INVALID_TYPE,
@@ -281,6 +288,41 @@ public class MediaService {
                 "Invalid file extension"
             );
         }
+    }
+
+    private boolean isAllowedContentType(String contentType, Set<String> allowedTypes) {
+        if (contentType == null || contentType.isBlank()) {
+            return false;
+        }
+
+        String lower = contentType.toLowerCase(Locale.ROOT).trim();
+        if (allowedTypes.contains(lower)) {
+            return true;
+        }
+
+        String baseType = lower.split(";")[0].trim();
+        if (allowedTypes.contains(baseType)) {
+            return true;
+        }
+
+        return allowedTypes.stream().anyMatch(allowed -> lower.startsWith(allowed + ";"));
+    }
+
+    private boolean isGenericBinaryWithAllowedExtension(
+        String contentType,
+        String extension,
+        Set<String> allowedExtensions
+    ) {
+        if (extension == null || extension.isEmpty() || !allowedExtensions.contains(extension)) {
+            return false;
+        }
+
+        if (contentType == null || contentType.isBlank()) {
+            return true;
+        }
+
+        String baseType = contentType.toLowerCase(Locale.ROOT).split(";")[0].trim();
+        return "application/octet-stream".equals(baseType) || "binary/octet-stream".equals(baseType);
     }
 
     private void enforceUploadRateLimit(String userId) {

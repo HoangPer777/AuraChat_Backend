@@ -22,7 +22,7 @@ public class Message {
     @Indexed
     private String senderId;
 
-    /** TEXT | IMAGE | FILE | CALL_LOG | VOICE */
+    /** TEXT | IMAGE | FILE | CALL_LOG | VOICE | STICKER */
     private String type;
 
     private String content;

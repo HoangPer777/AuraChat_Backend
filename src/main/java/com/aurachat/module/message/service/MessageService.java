@@ -67,14 +67,12 @@ public class MessageService {
 
         MessageResponse response = MessageResponse.from(saved);
 
-        // Push realtime tới từng thành viên (STOMP)
-        notifyConversationMembers(conv, response);
-
-        // Publish to Redis pub/sub cho multi-instance (best-effort)
+        // Chỉ push qua Redis; MessageSubscriber gửi STOMP (tránh duplicate khi vừa STOMP trực tiếp vừa Redis).
         try {
             messagePublisher.publish(req.conversationId(), response);
         } catch (Exception e) {
-            log.warn("Redis pub/sub unavailable: {}", e.getMessage());
+            log.warn("Redis pub/sub unavailable, falling back to direct STOMP: {}", e.getMessage());
+            notifyConversationMembers(conv, response);
         }
 
         return response;
@@ -131,6 +129,9 @@ public class MessageService {
         if ("IMAGE".equals(req.type())) {
             return "Đã gửi một hình ảnh";
         }
+        if ("STICKER".equals(req.type())) {
+            return "Sticker";
+        }
 
         String content = req.content();
         if (content == null) {
@@ -173,13 +174,24 @@ public class MessageService {
             }
         }
 
-        if ("IMAGE".equals(req.type()) || "FILE".equals(req.type()) || "VOICE".equals(req.type())) {
+        if ("IMAGE".equals(req.type()) || "FILE".equals(req.type()) || "VOICE".equals(req.type()) || "STICKER".equals(req.type())) {
             if (req.fileUrl() == null || req.fileUrl().trim().isEmpty()) {
                 throw new ValidationException(
                     ErrorCode.VALIDATION_REQUIRED_FIELD,
                     "fileUrl",
                     req.fileUrl(),
                     "File URL is required"
+                );
+            }
+        }
+
+        if ("STICKER".equals(req.type())) {
+            if (req.content() == null || req.content().trim().isEmpty()) {
+                throw new ValidationException(
+                    ErrorCode.VALIDATION_REQUIRED_FIELD,
+                    "content",
+                    req.content(),
+                    "Sticker id is required"
                 );
             }
         }
