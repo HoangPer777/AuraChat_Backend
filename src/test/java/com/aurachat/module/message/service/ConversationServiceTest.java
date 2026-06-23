@@ -7,6 +7,7 @@ import com.aurachat.module.auth.repository.UserRepository;
 import com.aurachat.module.message.dto.AddMemberRequest;
 import com.aurachat.module.message.dto.ConversationResponse;
 import com.aurachat.module.message.dto.CreateConversationRequest;
+import com.aurachat.module.message.dto.UpdateConversationRequest;
 import com.aurachat.module.message.entity.Conversation;
 import com.aurachat.module.message.repository.ConversationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,9 @@ class ConversationServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private GroupAvatarUploadService groupAvatarUploadService;
 
     @InjectMocks
     private ConversationService conversationService;
@@ -118,6 +122,13 @@ class ConversationServiceTest {
     }
 
     @Test
+    void createConversation_group_throwsWhenNameMissing() {
+        CreateConversationRequest req = new CreateConversationRequest("GROUP", null, null, List.of(USER_B));
+        assertThatThrownBy(() -> conversationService.createConversation(USER_A, req))
+            .isInstanceOf(BusinessLogicException.class);
+    }
+
+    @Test
     void createConversation_group_createsWithAdminRole() {
         Conversation saved = buildGroupConv("groupConv1");
         when(conversationRepository.save(any())).thenReturn(saved);
@@ -168,11 +179,42 @@ class ConversationServiceTest {
     void addMemberToGroup_addsNewMemberWhenAdmin() {
         Conversation conv = buildGroupConv("groupConv1");
         when(conversationRepository.findById("groupConv1")).thenReturn(Optional.of(conv));
+        when(userRepository.existsById(USER_C)).thenReturn(true);
         when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
 
         ConversationResponse result = conversationService.addMemberToGroup("groupConv1", USER_A, new AddMemberRequest(USER_C));
         assertThat(result.members()).anyMatch(m -> m.userId().equals(USER_C));
+    }
+
+    // ─── updateGroupConversation ──────────────────────────────────────────────
+
+    @Test
+    void updateGroupConversation_updatesNameWhenAdmin() {
+        Conversation conv = buildGroupConv("groupConv1");
+        when(conversationRepository.findById("groupConv1")).thenReturn(Optional.of(conv));
+        when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findAllById(anyCollection())).thenReturn(List.of());
+
+        ConversationResponse result = conversationService.updateGroupConversation(
+            "groupConv1",
+            USER_A,
+            new UpdateConversationRequest("New Group Name", null)
+        );
+
+        assertThat(result.name()).isEqualTo("New Group Name");
+    }
+
+    @Test
+    void updateGroupConversation_throwsWhenNotAdmin() {
+        Conversation conv = buildGroupConv("groupConv1");
+        when(conversationRepository.findById("groupConv1")).thenReturn(Optional.of(conv));
+
+        assertThatThrownBy(() -> conversationService.updateGroupConversation(
+            "groupConv1",
+            USER_B,
+            new UpdateConversationRequest("New Name", null)
+        )).isInstanceOf(BusinessLogicException.class);
     }
 
     // ─── removeMemberFromGroup ────────────────────────────────────────────────

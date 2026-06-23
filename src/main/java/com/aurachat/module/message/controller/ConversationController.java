@@ -4,12 +4,15 @@ import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.message.dto.AddMemberRequest;
 import com.aurachat.module.message.dto.ConversationResponse;
 import com.aurachat.module.message.dto.CreateConversationRequest;
+import com.aurachat.module.message.dto.UpdateConversationRequest;
 import com.aurachat.module.message.service.ConversationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,6 +45,30 @@ public class ConversationController {
             @AuthenticationPrincipal String userId,
             @PathVariable String id) {
         return DataResponse.success(conversationService.getConversationById(id, userId));
+    }
+
+    /** PATCH /api/conversations/{id} — cập nhật thông tin nhóm (admin) */
+    @PatchMapping("/{id}")
+    public DataResponse<ConversationResponse> updateConversation(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String id,
+            @Valid @RequestBody UpdateConversationRequest request) {
+        return DataResponse.success(
+            conversationService.updateGroupConversation(id, userId, request),
+            "Conversation updated"
+        );
+    }
+
+    /** POST /api/conversations/{id}/avatar — upload avatar nhóm (admin) */
+    @PostMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public DataResponse<ConversationResponse> uploadGroupAvatar(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) {
+        return DataResponse.success(
+            conversationService.uploadGroupAvatar(id, userId, file),
+            "Group avatar updated"
+        );
     }
 
     /** POST /api/conversations/{id}/members — thêm thành viên */
