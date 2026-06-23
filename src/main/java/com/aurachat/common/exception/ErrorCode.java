@@ -182,6 +182,21 @@ public enum ErrorCode {
      * Media file size exceeds the maximum allowed limit
      */
     MEDIA_SIZE_EXCEEDED("MEDIA_003", "Media file size exceeds limit", HttpStatus.BAD_REQUEST),
+
+    /**
+     * Media record not found
+     */
+    MEDIA_NOT_FOUND("MEDIA_004", "Media not found", HttpStatus.NOT_FOUND),
+
+    /**
+     * User does not have permission to access media
+     */
+    MEDIA_ACCESS_DENIED("MEDIA_005", "Access denied to media", HttpStatus.FORBIDDEN),
+
+    /**
+     * Failed to delete media file
+     */
+    MEDIA_DELETE_FAILED("MEDIA_006", "Failed to delete media file", HttpStatus.UNPROCESSABLE_ENTITY),
     
     // ========== System Errors ==========
     

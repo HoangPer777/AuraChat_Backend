@@ -1,19 +1,28 @@
 package com.aurachat.module.media.service;
 
 import com.aurachat.common.exception.ErrorCode;
+import com.aurachat.common.exception.AuthorizationException;
+import com.aurachat.common.exception.BusinessLogicException;
 import com.aurachat.common.exception.SystemException;
 import com.aurachat.common.exception.ValidationException;
+import com.aurachat.module.media.dto.MediaPageResponse;
 import com.aurachat.module.media.dto.MediaResponse;
+import com.aurachat.module.media.entity.Media;
+import com.aurachat.module.media.repository.MediaRepository;
 import io.imagekit.client.ImageKitClient;
 import io.imagekit.models.files.FileUploadParams;
 import io.imagekit.models.files.FileUploadResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
@@ -67,15 +76,58 @@ public class MediaService {
 
     private final ImageKitClient imageKit;
     private final StringRedisTemplate redisTemplate;
+    private final MediaRepository mediaRepository;
 
     public MediaResponse uploadImage(MultipartFile file, String userId) {
         enforceUploadRateLimit(userId);
-        return uploadMedia(file, userId, IMAGE_FOLDER, ALLOWED_IMAGE_TYPES, ALLOWED_IMAGE_EXTENSIONS);
+        return uploadMedia(file, userId, IMAGE_FOLDER, ALLOWED_IMAGE_TYPES, ALLOWED_IMAGE_EXTENSIONS, "IMAGE");
     }
 
     public MediaResponse uploadFile(MultipartFile file, String userId) {
         enforceUploadRateLimit(userId);
-        return uploadMedia(file, userId, FILE_FOLDER, ALLOWED_FILE_TYPES, ALLOWED_FILE_EXTENSIONS);
+        return uploadMedia(file, userId, FILE_FOLDER, ALLOWED_FILE_TYPES, ALLOWED_FILE_EXTENSIONS, "FILE");
+    }
+
+    public MediaPageResponse getUserMedia(String userId, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        Page<Media> result = mediaRepository.findByOwnerIdAndDeletedFalseOrderByCreatedAtDesc(userId, pageable);
+        return MediaPageResponse.of(
+            result.getContent().stream().map(this::toResponse).toList(),
+            safePage,
+            safeSize,
+            result.getTotalElements()
+        );
+    }
+
+    public MediaResponse getMediaDetail(String userId, String mediaId) {
+        Media media = findExistingMedia(mediaId);
+        ensureOwnership(userId, media);
+        return toResponse(media);
+    }
+
+    public void deleteMedia(String userId, String mediaId) {
+        Media media = findExistingMedia(mediaId);
+        ensureOwnership(userId, media);
+
+        try {
+            if (media.getFileId() != null && !media.getFileId().isBlank()) {
+                imageKit.files().delete(media.getFileId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to delete media {} from ImageKit", mediaId, e);
+            throw new SystemException(
+                ErrorCode.MEDIA_DELETE_FAILED,
+                "ImageKit",
+                "Failed to delete media from ImageKit",
+                e
+            );
+        }
+
+        media.setDeleted(true);
+        media.setDeletedAt(Instant.now());
+        mediaRepository.save(media);
     }
 
     private MediaResponse uploadMedia(
@@ -83,7 +135,8 @@ public class MediaService {
         String userId,
         String folder,
         Set<String> allowedTypes,
-        Set<String> allowedExtensions
+        Set<String> allowedExtensions,
+        String mediaType
     ) {
         validateFile(file, allowedTypes, allowedExtensions);
 
@@ -112,15 +165,21 @@ public class MediaService {
                     "ImageKit",
                     "ImageKit did not return a URL for the uploaded file"
                 ));
+            String fileId = extractFileId(uploadResult);
 
-            return new MediaResponse(
-                url,
-                uniqueName,
-                originalName,
-                file.getContentType(),
-                file.getSize(),
-                "ImageKit"
-            );
+            Media media = mediaRepository.save(Media.builder()
+                .ownerId(userId)
+                .fileId(fileId)
+                .url(url)
+                .fileName(uniqueName)
+                .originalFileName(originalName)
+                .contentType(file.getContentType())
+                .size(file.getSize())
+                .provider("ImageKit")
+                .mediaType(mediaType)
+                .createdAt(Instant.now())
+                .build());
+            return toResponse(media);
         } catch (IOException e) {
             log.error("Failed to read media file for user {}: {}", userId, e.getMessage(), e);
             throw new SystemException(
@@ -220,6 +279,55 @@ public class MediaService {
 
     private String uploadRateKey(String userId) {
         return "media:rate:upload:" + userId;
+    }
+
+    private Media findExistingMedia(String mediaId) {
+        return mediaRepository.findByIdAndDeletedFalse(mediaId)
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.MEDIA_NOT_FOUND,
+                "Media not found",
+                "media/" + mediaId
+            ));
+    }
+
+    private void ensureOwnership(String userId, Media media) {
+        if (!media.getOwnerId().equals(userId)) {
+            throw new AuthorizationException("media/" + media.getId(), "OWNER", userId);
+        }
+    }
+
+    private String extractFileId(FileUploadResponse response) {
+        try {
+            var method = response.getClass().getMethod("fileId");
+            Object value = method.invoke(response);
+            if (value instanceof String strValue && !strValue.isBlank()) {
+                return strValue;
+            }
+            if (value instanceof java.util.Optional<?> optional && optional.isPresent()) {
+                Object optionalValue = optional.get();
+                if (optionalValue instanceof String strValue && !strValue.isBlank()) {
+                    return strValue;
+                }
+            }
+        } catch (Exception ignored) {
+            // Fallback below
+        }
+        return null;
+    }
+
+    private MediaResponse toResponse(Media media) {
+        return new MediaResponse(
+            media.getId(),
+            media.getFileId(),
+            media.getUrl(),
+            media.getFileName(),
+            media.getOriginalFileName(),
+            media.getContentType(),
+            media.getSize(),
+            media.getProvider(),
+            media.getMediaType(),
+            media.getCreatedAt()
+        );
     }
 
     private String getFileExtensionLower(String filename) {

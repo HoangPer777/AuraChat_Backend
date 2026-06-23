@@ -2,6 +2,8 @@ package com.aurachat.module.media.integration;
 
 import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.media.dto.MediaResponse;
+import com.aurachat.module.media.entity.Media;
+import com.aurachat.module.media.repository.MediaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.imagekit.client.ImageKitClient;
 import io.imagekit.models.files.FileUploadResponse;
@@ -26,6 +28,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -54,6 +58,9 @@ class MediaControllerIntegrationTest {
     @MockBean
     private ValueOperations<String, String> valueOperations;
 
+    @MockBean
+    private MediaRepository mediaRepository;
+
     @BeforeEach
     void setupMocks() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -62,6 +69,11 @@ class MediaControllerIntegrationTest {
         FileUploadResponse uploadResponse = mock(FileUploadResponse.class);
         when(uploadResponse.url()).thenReturn(Optional.of("https://ik.imagekit.io/test/upload.png"));
         when(imageKitClient.files().upload(any())).thenReturn(uploadResponse);
+        when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> {
+            Media media = invocation.getArgument(0);
+            media.setId("media-1");
+            return media;
+        });
     }
 
     @Test
@@ -113,5 +125,61 @@ class MediaControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.url").value("https://ik.imagekit.io/test/upload.png"));
+    }
+
+    @Test
+    void getMediaDetail_returnsOwnedMedia() throws Exception {
+        Media media = Media.builder()
+            .id("media-1")
+            .ownerId("user1")
+            .fileId("ik-file-id")
+            .url("https://ik.imagekit.io/test/upload.png")
+            .fileName("media_user1.png")
+            .originalFileName("photo.png")
+            .contentType("image/png")
+            .size(100L)
+            .provider("ImageKit")
+            .mediaType("IMAGE")
+            .build();
+        when(mediaRepository.findByIdAndDeletedFalse("media-1")).thenReturn(Optional.of(media));
+
+        mockMvc.perform(
+                get("/api/media/media-1")
+                    .with(SecurityMockMvcRequestPostProcessors.authentication(
+                        new UsernamePasswordAuthenticationToken("user1", null, List.of())
+                    ))
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.id").value("media-1"));
+    }
+
+    @Test
+    void deleteMedia_marksDeleted() throws Exception {
+        Media media = Media.builder()
+            .id("media-1")
+            .ownerId("user1")
+            .fileId("ik-file-id")
+            .url("https://ik.imagekit.io/test/upload.png")
+            .fileName("media_user1.png")
+            .originalFileName("photo.png")
+            .contentType("image/png")
+            .size(100L)
+            .provider("ImageKit")
+            .mediaType("IMAGE")
+            .build();
+        when(mediaRepository.findByIdAndDeletedFalse("media-1")).thenReturn(Optional.of(media));
+        when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mockMvc.perform(
+                delete("/api/media/media-1")
+                    .with(SecurityMockMvcRequestPostProcessors.authentication(
+                        new UsernamePasswordAuthenticationToken("user1", null, List.of())
+                    ))
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        verify(imageKitClient.files()).delete("ik-file-id");
     }
 }
