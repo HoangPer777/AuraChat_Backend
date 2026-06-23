@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,6 +39,8 @@ class MessageServiceTest {
     private ConversationService conversationService;
     @Mock
     private MessagePublisher messagePublisher;
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private MessageService messageService;
@@ -114,7 +117,7 @@ class MessageServiceTest {
         deleted.setDeleted(true);
 
         Pageable pageable = PageRequest.of(0, 50);
-        when(messageRepository.findByConversationIdOrderByCreatedAtDesc(CONV_ID, pageable))
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(CONV_ID, pageable))
             .thenReturn(List.of(active, deleted));
 
         List<MessageResponse> result = messageService.getMessageHistory(CONV_ID, SENDER, pageable);

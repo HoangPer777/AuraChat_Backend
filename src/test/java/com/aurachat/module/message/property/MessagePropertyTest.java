@@ -76,19 +76,19 @@ class MessagePropertyTest {
                 .build());
         }
 
-        // Repository trả về messages đã sorted (simulate MongoDB sort)
+        // Repository trả về messages đã sorted ASC (simulate MongoDB sort)
         List<Message> sorted = messages.stream()
-            .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+            .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
             .toList();
-        when(messageRepository.findByConversationIdOrderByCreatedAtDesc(eq(convId), any()))
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(eq(convId), any()))
             .thenReturn(sorted);
 
         var result = messageService.getMessageHistory(convId, userId, PageRequest.of(0, 100));
 
-        // Verify: kết quả phải sorted DESC
+        // Verify: kết quả phải sorted ASC (cũ → mới)
         for (int i = 0; i < result.size() - 1; i++) {
             assertThat(result.get(i).createdAt())
-                .isAfterOrEqualTo(result.get(i + 1).createdAt());
+                .isBeforeOrEqualTo(result.get(i + 1).createdAt());
         }
     }
 

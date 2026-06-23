@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface MessageRepository extends MongoRepository<Message, String> {
 
-    /** Lấy tin nhắn theo conversationId, phân trang cursor-based */
-    List<Message> findByConversationIdOrderByCreatedAtDesc(String conversationId, Pageable pageable);
+    /** Lấy tin nhắn theo conversationId, phân trang cursor-based (cũ → mới) */
+    List<Message> findByConversationIdOrderByCreatedAtAsc(String conversationId, Pageable pageable);
 }

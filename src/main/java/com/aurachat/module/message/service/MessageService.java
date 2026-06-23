@@ -14,6 +14,7 @@ import com.aurachat.module.message.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -29,6 +30,7 @@ public class MessageService {
     private final ConversationRepository conversationRepository;
     private final ConversationService conversationService;
     private final MessagePublisher messagePublisher;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // ─── Send ─────────────────────────────────────────────────────────────────
 
@@ -65,14 +67,30 @@ public class MessageService {
 
         MessageResponse response = MessageResponse.from(saved);
 
-        // Publish to Redis pub/sub (best-effort — không fail nếu Redis down)
+        // Push realtime tới từng thành viên (STOMP)
+        notifyConversationMembers(conv, response);
+
+        // Publish to Redis pub/sub cho multi-instance (best-effort)
         try {
             messagePublisher.publish(req.conversationId(), response);
         } catch (Exception e) {
-            log.warn("Redis pub/sub unavailable, message saved but not broadcast: {}", e.getMessage());
+            log.warn("Redis pub/sub unavailable: {}", e.getMessage());
         }
 
         return response;
+    }
+
+    private void notifyConversationMembers(Conversation conv, MessageResponse response) {
+        if (conv.getMembers() == null) {
+            return;
+        }
+        for (Conversation.Member member : conv.getMembers()) {
+            messagingTemplate.convertAndSendToUser(
+                member.getUserId(),
+                "/queue/messages",
+                response
+            );
+        }
     }
 
     private void validateMessagePayload(SendMessageRequest req) {
@@ -134,7 +152,7 @@ public class MessageService {
             return new ArrayList<>();
         }
         conversationService.findAndValidateMember(conversationId, requesterId);
-        return messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable)
+        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId, pageable)
             .stream()
             .filter(m -> !m.isDeleted())
             .map(MessageResponse::from)
