@@ -12,6 +12,7 @@ import com.aurachat.module.call.dto.IceCandidateDto;
 import com.aurachat.module.call.dto.InitiateCallRequest;
 import com.aurachat.module.call.entity.CallLog;
 import com.aurachat.module.call.repository.CallLogRepository;
+import com.aurachat.module.message.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import lombok.AllArgsConstructor;
@@ -45,6 +46,7 @@ public class CallService {
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper redisObjectMapper;
     private final CallLogRepository callLogRepository;
+    private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -86,7 +88,10 @@ public class CallService {
 
         messagingTemplate.convertAndSendToUser(request.receiverId(), "/queue/call", offer);
 
-        return new CallResponse(callId, "RINGING", "Call initiated", null, null);
+        CallResponse callerAck = new CallResponse(callId, "RINGING", "Call initiated", null, null);
+        messagingTemplate.convertAndSendToUser(callerId, "/queue/call", callerAck);
+
+        return callerAck;
     }
 
     public void acceptCall(String callId, String receiverId, String sdp) {
@@ -132,7 +137,7 @@ public class CallService {
         deleteState(callId);
 
         CallResponse response = new CallResponse(callId, "DECLINED", "Call declined", 0L, endedAt);
-        messagingTemplate.convertAndSendToUser(state.getCallerId(), "/queue/call", response);
+        notifyBoth(state, response);
     }
 
     public void endCall(String callId, String userId) {
@@ -275,6 +280,23 @@ public class CallService {
             .build();
 
         callLogRepository.save(logEntry);
+        publishCallLogMessage(state, status, durationSeconds);
+    }
+
+    private void publishCallLogMessage(CallState state, String status, long durationSeconds) {
+        try {
+            messageService.sendCallLogMessage(
+                state.getCallerId(),
+                state.getReceiverId(),
+                state.getConversationId(),
+                state.getType(),
+                status,
+                durationSeconds
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to publish call log chat message: callId={}, error={}",
+                state.getCallId(), ex.getMessage());
+        }
     }
 
 

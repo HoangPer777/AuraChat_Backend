@@ -68,6 +68,23 @@ public class MediaService {
         "txt"
     );
 
+    private static final Set<String> ALLOWED_AUDIO_TYPES = Set.of(
+        "audio/webm",
+        "audio/ogg",
+        "audio/mpeg",
+        "audio/mp4",
+        "audio/wav",
+        "audio/x-wav"
+    );
+
+    private static final Set<String> ALLOWED_AUDIO_EXTENSIONS = Set.of(
+        "webm",
+        "ogg",
+        "mp3",
+        "m4a",
+        "wav"
+    );
+
     private static final Set<String> BLOCKED_EXTENSIONS = Set.of(
         "exe",
         "sh",
@@ -86,6 +103,11 @@ public class MediaService {
     public MediaResponse uploadFile(MultipartFile file, String userId) {
         enforceUploadRateLimit(userId);
         return uploadMedia(file, userId, FILE_FOLDER, ALLOWED_FILE_TYPES, ALLOWED_FILE_EXTENSIONS, "FILE");
+    }
+
+    public MediaResponse uploadAudio(MultipartFile file, String userId) {
+        enforceUploadRateLimit(userId);
+        return uploadMedia(file, userId, FILE_FOLDER, ALLOWED_AUDIO_TYPES, ALLOWED_AUDIO_EXTENSIONS, "AUDIO");
     }
 
     public MediaPageResponse getUserMedia(String userId, int page, int size) {

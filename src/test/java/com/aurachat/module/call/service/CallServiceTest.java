@@ -8,6 +8,7 @@ import com.aurachat.module.call.dto.CallLogDto;
 import com.aurachat.module.call.dto.InitiateCallRequest;
 import com.aurachat.module.call.entity.CallLog;
 import com.aurachat.module.call.repository.CallLogRepository;
+import com.aurachat.module.message.service.MessageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,6 +39,9 @@ class CallServiceTest {
 
     @Mock
     private com.fasterxml.jackson.databind.ObjectMapper redisObjectMapper;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private CallService callService;

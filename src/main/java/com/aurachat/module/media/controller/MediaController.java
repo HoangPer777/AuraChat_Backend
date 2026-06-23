@@ -45,6 +45,15 @@ public class MediaController {
         return ResponseEntity.ok(DataResponse.success(response, "File uploaded successfully"));
     }
 
+    @PostMapping(value = "/upload/audio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<DataResponse<MediaResponse>> uploadAudio(
+        @AuthenticationPrincipal String userId,
+        @Valid @ModelAttribute UploadFileRequest request
+    ) {
+        MediaResponse response = mediaService.uploadAudio(request.file(), userId);
+        return ResponseEntity.ok(DataResponse.success(response, "Audio uploaded successfully"));
+    }
+
     @GetMapping
     public ResponseEntity<DataResponse<MediaPageResponse>> getUserMedia(
         @AuthenticationPrincipal String userId,
