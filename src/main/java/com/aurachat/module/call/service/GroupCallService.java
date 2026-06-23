@@ -22,6 +22,7 @@ import com.aurachat.module.message.entity.Conversation;
 import com.aurachat.module.message.service.ConversationService;
 import com.aurachat.module.message.service.MessageService;
 import com.aurachat.module.message.util.CallLogContent;
+import com.aurachat.module.notification.service.PushNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -57,6 +58,7 @@ public class GroupCallService {
     private final CallLogRepository callLogRepository;
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PushNotificationService pushNotificationService;
 
     public GroupCallStartedDto initiateGroupCall(String callerId, InitiateGroupCallRequest request) {
         validateInitiateRequest(request);
@@ -111,6 +113,7 @@ public class GroupCallService {
 
         for (String memberId : inviteIds) {
             messagingTemplate.convertAndSendToUser(memberId, "/queue/call", invite);
+            pushNotificationService.notifyGroupCallInvite(memberId, invite);
         }
 
         GroupCallStartedDto started = new GroupCallStartedDto(

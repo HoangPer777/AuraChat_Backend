@@ -14,6 +14,7 @@ import com.aurachat.module.friend.entity.Friendship;
 import com.aurachat.module.friend.repository.FriendRequestRepository;
 import com.aurachat.module.friend.repository.FriendshipRepository;
 import com.aurachat.module.message.service.ConversationService;
+import com.aurachat.module.notification.service.PushNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +55,8 @@ class FriendServiceTest {
     private StringRedisTemplate redisTemplate;
     @Mock
     private ObjectMapper objectMapper;
+    @Mock
+    private PushNotificationService pushNotificationService;
     @Mock
     private ValueOperations<String, String> valueOperations;
     @Mock
@@ -111,6 +114,7 @@ class FriendServiceTest {
         assertThat(result.sender()).isNotNull();
         verify(friendRequestRepository).save(any());
         verify(friendWebSocketController).notifyFriendRequestCreated(eq(RECEIVER), argThat(requestHasId("req-1")));
+        verify(pushNotificationService).notifyFriendRequest(eq(RECEIVER), any());
     }
 
     @Test

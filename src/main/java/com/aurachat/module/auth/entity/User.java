@@ -7,6 +7,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.time.Instant;
 
 @Document(collection = "users")
@@ -49,6 +51,10 @@ public class User {
 
     /** Thời điểm hoạt động cuối - dùng cho Presence */
     private Instant lastSeen;
+
+    /** FCM device tokens cho push notification khi offline */
+    @Builder.Default
+    private List<String> fcmTokens = new ArrayList<>();
 
     @Indexed
     private Instant createdAt;

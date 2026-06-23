@@ -12,6 +12,7 @@ import com.aurachat.module.message.pubsub.MessagePublisher;
 import com.aurachat.module.message.repository.ConversationRepository;
 import com.aurachat.module.message.repository.MessageRepository;
 import com.aurachat.module.message.util.CallLogContent;
+import com.aurachat.module.notification.service.PushNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ public class MessageService {
     private final ConversationService conversationService;
     private final MessagePublisher messagePublisher;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PushNotificationService pushNotificationService;
 
     // ─── Send ─────────────────────────────────────────────────────────────────
 
@@ -150,6 +152,9 @@ public class MessageService {
                 "/queue/messages",
                 response
             );
+            if (!member.getUserId().equals(response.senderId())) {
+                pushNotificationService.notifyNewMessage(member.getUserId(), response);
+            }
         }
     }
 

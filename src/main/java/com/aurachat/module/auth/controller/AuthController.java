@@ -4,6 +4,7 @@ import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.auth.service.AuthService;
 import com.aurachat.module.auth.service.ForgotPasswordService;
 import com.aurachat.module.auth.service.AvatarUploadService;
+import com.aurachat.module.auth.service.FcmTokenService;
 import com.aurachat.module.auth.service.FirebaseAuthService;
 import com.aurachat.module.auth.dto.*;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ public class AuthController {
     private final ForgotPasswordService forgotPasswordService;
     private final AvatarUploadService avatarUploadService;
     private final FirebaseAuthService firebaseAuthService;
+    private final FcmTokenService fcmTokenService;
 
     @PostMapping("/register")
     public ResponseEntity<DataResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest req) {
@@ -69,6 +71,24 @@ public class AuthController {
     ) {
         String avatarUrl = avatarUploadService.uploadAvatar(userId, file);
         return ResponseEntity.ok(DataResponse.success(avatarUrl, "Avatar uploaded successfully"));
+    }
+
+    @PostMapping("/me/fcm-token")
+    public ResponseEntity<DataResponse<Void>> registerFcmToken(
+        @AuthenticationPrincipal String userId,
+        @Valid @RequestBody FcmTokenRequest req
+    ) {
+        fcmTokenService.registerToken(userId, req.token());
+        return ResponseEntity.ok(DataResponse.success("FCM token registered"));
+    }
+
+    @DeleteMapping("/me/fcm-token")
+    public ResponseEntity<DataResponse<Void>> removeFcmToken(
+        @AuthenticationPrincipal String userId,
+        @Valid @RequestBody FcmTokenRequest req
+    ) {
+        fcmTokenService.removeToken(userId, req.token());
+        return ResponseEntity.ok(DataResponse.success("FCM token removed"));
     }
 
     // ─── Firebase Authentication ──────────────────────────────────────────────

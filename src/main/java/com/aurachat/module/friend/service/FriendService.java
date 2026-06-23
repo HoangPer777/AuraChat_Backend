@@ -13,6 +13,7 @@ import com.aurachat.module.friend.dto.SendFriendRequestDto;
 import com.aurachat.module.friend.dto.UserSearchResultDto;
 import com.aurachat.module.message.dto.CreateConversationRequest;
 import com.aurachat.module.message.service.ConversationService;
+import com.aurachat.module.notification.service.PushNotificationService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,6 +61,7 @@ public class FriendService {
     private final ConversationService conversationService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final PushNotificationService pushNotificationService;
 
     public FriendRequestDto sendFriendRequest(String senderId, SendFriendRequestDto req) {
         enforceSendRequestRateLimit(senderId);
@@ -103,6 +105,7 @@ public class FriendService {
         friendRequestRepository.save(friendRequest);
         FriendRequestDto response = toFriendRequestDto(friendRequest);
         friendWebSocketController.notifyFriendRequestCreated(receiverId, response);
+        pushNotificationService.notifyFriendRequest(receiverId, response);
         conversationService.createConversation(senderId,
             new CreateConversationRequest("PRIVATE", receiverId, null, null));
         incrementPendingCount(receiverId);

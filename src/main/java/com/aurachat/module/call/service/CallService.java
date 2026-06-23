@@ -13,6 +13,7 @@ import com.aurachat.module.call.dto.InitiateCallRequest;
 import com.aurachat.module.call.entity.CallLog;
 import com.aurachat.module.call.repository.CallLogRepository;
 import com.aurachat.module.message.service.MessageService;
+import com.aurachat.module.notification.service.PushNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import lombok.AllArgsConstructor;
@@ -48,6 +49,7 @@ public class CallService {
     private final CallLogRepository callLogRepository;
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PushNotificationService pushNotificationService;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread thread = new Thread(r, "call-timeout");
@@ -87,6 +89,7 @@ public class CallService {
         );
 
         messagingTemplate.convertAndSendToUser(request.receiverId(), "/queue/call", offer);
+        pushNotificationService.notifyIncomingCall(request.receiverId(), offer);
 
         CallResponse callerAck = new CallResponse(callId, "RINGING", "Call initiated", null, null);
         messagingTemplate.convertAndSendToUser(callerId, "/queue/call", callerAck);

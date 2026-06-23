@@ -3,6 +3,7 @@ package com.aurachat.module.message.pubsub;
 import com.aurachat.module.message.dto.MessageResponse;
 import com.aurachat.module.message.entity.Conversation;
 import com.aurachat.module.message.repository.ConversationRepository;
+import com.aurachat.module.notification.service.PushNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class MessageSubscriber implements MessageListener {
     private final ConversationRepository conversationRepository;
     private final ObjectMapper redisObjectMapper;
     private final RedisMessageListenerContainer listenerContainer;
+    private final PushNotificationService pushNotificationService;
 
     @PostConstruct
     public void registerListener() {
@@ -38,12 +40,15 @@ public class MessageSubscriber implements MessageListener {
             // Lấy danh sách thành viên và gửi đến từng người
             conversationRepository.findById(msg.conversationId()).ifPresent(conv -> {
                 for (Conversation.Member member : conv.getMembers()) {
-                    // Gửi đến tất cả thành viên (kể cả người gửi để confirm)
                     messagingTemplate.convertAndSendToUser(
                         member.getUserId(),
                         "/queue/messages",
                         msg
                     );
+
+                    if (!member.getUserId().equals(msg.senderId())) {
+                        pushNotificationService.notifyNewMessage(member.getUserId(), msg);
+                    }
                 }
             });
         } catch (Exception e) {
