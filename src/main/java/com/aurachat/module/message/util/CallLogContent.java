@@ -12,14 +12,20 @@ public final class CallLogContent {
     }
 
     public static String toJson(String callType, String status, long durationSeconds) {
+        return toJson(callType, status, durationSeconds, false, 0);
+    }
+
+    public static String toJson(String callType, String status, long durationSeconds, boolean groupCall, int participantCount) {
         try {
             return MAPPER.writeValueAsString(new Payload(
                 callType == null ? "VIDEO" : callType,
                 status == null ? "DECLINED" : status,
-                Math.max(durationSeconds, 0L)
+                Math.max(durationSeconds, 0L),
+                groupCall,
+                Math.max(participantCount, 0)
             ));
         } catch (JsonProcessingException ex) {
-            return "{\"callType\":\"VIDEO\",\"status\":\"DECLINED\",\"durationSeconds\":0}";
+            return "{\"callType\":\"VIDEO\",\"status\":\"DECLINED\",\"durationSeconds\":0,\"groupCall\":false,\"participantCount\":0}";
         }
     }
 
@@ -30,14 +36,22 @@ public final class CallLogContent {
         }
 
         String typeLabel = "AUDIO".equalsIgnoreCase(payload.callType()) ? "Cuộc gọi thoại" : "Cuộc gọi video";
+        if (payload.groupCall()) {
+            typeLabel += " nhóm";
+        }
+        String participantSuffix = payload.groupCall() && payload.participantCount() > 0
+            ? " · " + payload.participantCount() + " người tham gia"
+            : "";
         return switch (payload.status()) {
             case "COMPLETED" -> {
                 String duration = formatDuration(payload.durationSeconds());
-                yield duration == null ? typeLabel : typeLabel + " · " + duration;
+                yield duration == null
+                    ? typeLabel + participantSuffix
+                    : typeLabel + participantSuffix + " · " + duration;
             }
-            case "MISSED" -> typeLabel + " · Không trả lời";
-            case "DECLINED" -> typeLabel + " · Không kết nối được";
-            default -> typeLabel;
+            case "MISSED" -> typeLabel + participantSuffix + " · Không trả lời";
+            case "DECLINED" -> typeLabel + participantSuffix + " · Không kết nối được";
+            default -> typeLabel + participantSuffix;
         };
     }
 
@@ -50,7 +64,9 @@ public final class CallLogContent {
             return new Payload(
                 node.path("callType").asText("VIDEO"),
                 node.path("status").asText("DECLINED"),
-                node.path("durationSeconds").asLong(0L)
+                node.path("durationSeconds").asLong(0L),
+                node.path("groupCall").asBoolean(false),
+                node.path("participantCount").asInt(0)
             );
         } catch (JsonProcessingException ex) {
             return null;
@@ -72,6 +88,6 @@ public final class CallLogContent {
         return seconds + " giây";
     }
 
-    private record Payload(String callType, String status, long durationSeconds) {
+    private record Payload(String callType, String status, long durationSeconds, boolean groupCall, int participantCount) {
     }
 }
