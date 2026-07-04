@@ -2,6 +2,7 @@ package com.aurachat.module.auth.controller;
 
 import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.auth.service.AuthService;
+import com.aurachat.module.auth.service.EmailVerificationService;
 import com.aurachat.module.auth.service.ForgotPasswordService;
 import com.aurachat.module.auth.service.AvatarUploadService;
 import com.aurachat.module.auth.service.FcmTokenService;
