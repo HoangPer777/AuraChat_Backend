@@ -9,6 +9,7 @@ import com.aurachat.module.message.repository.ConversationRepository;
 import com.aurachat.module.message.repository.MessageRepository;
 import com.aurachat.module.message.service.ConversationService;
 import com.aurachat.module.message.service.MessageService;
+import com.aurachat.module.notification.service.PushNotificationService;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.NotBlank;
 import net.jqwik.api.constraints.Size;
@@ -36,8 +37,9 @@ class MessagePropertyTest {
     private final ConversationService conversationService = Mockito.mock(ConversationService.class);
     private final MessagePublisher messagePublisher = Mockito.mock(MessagePublisher.class);
     private final SimpMessagingTemplate messagingTemplate = Mockito.mock(SimpMessagingTemplate.class);
+    private final PushNotificationService pushNotificationService = Mockito.mock(PushNotificationService.class);
     private final MessageService messageService = new MessageService(
-        messageRepository, conversationRepository, conversationService, messagePublisher, messagingTemplate
+        messageRepository, conversationRepository, conversationService, messagePublisher, messagingTemplate, pushNotificationService
     );
 
     /**
