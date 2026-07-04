@@ -47,6 +47,16 @@ public enum ErrorCode {
      * Authentication failed for unspecified reason
      */
     AUTH_FAILED("AUTH_006", "Authentication failed", HttpStatus.UNAUTHORIZED),
+
+    /**
+     * Email address has not been verified yet
+     */
+    AUTH_EMAIL_NOT_VERIFIED("AUTH_007", "Email address is not verified", HttpStatus.UNAUTHORIZED),
+
+    /**
+     * Account does not support password reset (OAuth-only)
+     */
+    AUTH_OAUTH_ACCOUNT("AUTH_008", "This account uses social login", HttpStatus.UNPROCESSABLE_ENTITY),
     
     // ========== Validation ==========
     

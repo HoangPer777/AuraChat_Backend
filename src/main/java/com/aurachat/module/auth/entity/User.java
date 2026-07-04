@@ -56,6 +56,10 @@ public class User {
     @Builder.Default
     private List<String> fcmTokens = new ArrayList<>();
 
+    /** true sau khi xác thực email (LOCAL). OAuth users mặc định true. */
+    @Builder.Default
+    private Boolean emailVerified = false;
+
     @Indexed
     private Instant createdAt;
 

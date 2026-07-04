@@ -39,6 +39,7 @@ public class AdminBootstrap implements CommandLineRunner {
                 .email(email)
                 .displayName("AuraChat Admin")
                 .passwordHash(passwordEncoder.encode(adminPassword))
+                .emailVerified(true)
                 .role("ADMIN")
                 .status("ACTIVE")
                 .createdAt(Instant.now())
@@ -47,6 +48,9 @@ public class AdminBootstrap implements CommandLineRunner {
         } else {
             admin.setRole("ADMIN");
             admin.setStatus("ACTIVE");
+            if (admin.getEmailVerified() == null || !admin.getEmailVerified()) {
+                admin.setEmailVerified(true);
+            }
             admin.setUpdatedAt(Instant.now());
         }
         userRepository.save(admin);

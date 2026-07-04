@@ -3,61 +3,92 @@ package com.aurachat.module.auth.service;
 import com.aurachat.common.exception.AuthenticationException;
 import com.aurachat.common.exception.BusinessLogicException;
 import com.aurachat.common.exception.ErrorCode;
+import com.aurachat.module.auth.dto.ForgotPasswordResponse;
 import com.aurachat.module.auth.dto.ResetPasswordRequest;
 import com.aurachat.module.auth.entity.User;
 import com.aurachat.module.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ForgotPasswordService {
 
-    private static final String OTP_PREFIX = "otp:forgot:";
-    private static final Duration OTP_TTL = Duration.ofMinutes(10);
+    private static final String FORGOT_TOKEN_PREFIX = "forgot:token:";
+    private static final String FORGOT_VERIFIED_PREFIX = "forgot:verified:";
+    private static final Duration FORGOT_TTL = Duration.ofHours(1);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     /**
-     * Tạo OTP 6 số, lưu Redis với TTL 10 phút, gửi email.
-     * Luôn trả về thành công để tránh email enumeration.
+     * Kiểm tra phương thức đăng nhập và gửi link xác thực email nếu là tài khoản LOCAL.
      */
-    public void sendOtp(String email) {
-        userRepository.findByEmail(email).ifPresent(user -> {
-            String otp = generateOtp();
-            redisTemplate.opsForValue().set(OTP_PREFIX + email, otp, OTP_TTL);
-            sendEmail(email, otp);
-        });
+    public ForgotPasswordResponse requestResetLink(String email) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+
+        if (userOpt.isEmpty()) {
+            return ForgotPasswordResponse.genericSuccess();
+        }
+
+        User user = userOpt.get();
+        if (!EmailVerificationService.isLocalAccount(user)) {
+            return ForgotPasswordResponse.oauthAccount(user.getProvider());
+        }
+
+        sendResetLinkEmail(email);
+        return ForgotPasswordResponse.linkSent();
     }
 
     /**
-     * Xác minh OTP và đặt lại mật khẩu.
+     * Xác thực email qua link trong email quên mật khẩu.
      */
-    public void resetPassword(ResetPasswordRequest req) {
-        String key = OTP_PREFIX + req.email();
-        String storedOtp = redisTemplate.opsForValue().get(key);
+    public String verifyResetEmail(String token) {
+        String key = FORGOT_TOKEN_PREFIX + token;
+        String email = redisTemplate.opsForValue().get(key);
 
-        if (storedOtp == null) {
+        if (email == null) {
             throw new AuthenticationException(
                 ErrorCode.AUTH_TOKEN_EXPIRED,
-                "OTP expired or not found",
-                "reset password"
+                "Reset link expired or invalid",
+                "verify forgot password"
             );
         }
-        if (!storedOtp.equals(req.otp())) {
+
+        redisTemplate.opsForValue().set(FORGOT_VERIFIED_PREFIX + email, "1", FORGOT_TTL);
+        redisTemplate.delete(key);
+        return email;
+    }
+
+    /**
+     * Kiểm tra email đã được xác thực cho phiên đặt lại mật khẩu chưa.
+     */
+    public boolean isResetEmailVerified(String email) {
+        return Boolean.TRUE.equals(
+            redisTemplate.hasKey(FORGOT_VERIFIED_PREFIX + email)
+        );
+    }
+
+    /**
+     * Đặt lại mật khẩu sau khi email đã được xác thực.
+     */
+    public void resetPassword(ResetPasswordRequest req) {
+        if (!isResetEmailVerified(req.email())) {
             throw new AuthenticationException(
-                ErrorCode.AUTH_INVALID_CREDENTIALS,
-                "Invalid OTP",
+                ErrorCode.AUTH_TOKEN_INVALID,
+                "Email not verified for password reset",
                 "reset password"
             );
         }
@@ -68,26 +99,34 @@ public class ForgotPasswordService {
                 "User not found"
             ));
 
+        if (!EmailVerificationService.isLocalAccount(user)) {
+            throw new BusinessLogicException(
+                ErrorCode.AUTH_OAUTH_ACCOUNT,
+                "Password reset is not available for this account"
+            );
+        }
+
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        user.setUpdatedAt(java.time.Instant.now());
         userRepository.save(user);
 
-        // Xóa OTP sau khi dùng
-        redisTemplate.delete(key);
+        redisTemplate.delete(FORGOT_VERIFIED_PREFIX + req.email());
     }
 
-    private String generateOtp() {
-        return String.format("%06d", new SecureRandom().nextInt(1_000_000));
-    }
+    private void sendResetLinkEmail(String email) {
+        String token = UUID.randomUUID().toString();
+        redisTemplate.delete(FORGOT_VERIFIED_PREFIX + email);
+        redisTemplate.opsForValue().set(FORGOT_TOKEN_PREFIX + token, email, FORGOT_TTL);
 
-    private void sendEmail(String to, String otp) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setTo(to);
-        msg.setSubject("Aura Chat - Mã xác nhận đặt lại mật khẩu");
-        msg.setText(
-            "Mã OTP của bạn là: " + otp + "\n\n" +
-            "Mã có hiệu lực trong 10 phút.\n" +
+        String link = frontendUrl + "/verify-forgot-password?token=" + token;
+        emailService.send(
+            email,
+            "Aura Chat - Xác nhận email đặt lại mật khẩu",
+            "Bạn đã yêu cầu đặt lại mật khẩu Aura Chat.\n\n" +
+            "Vui lòng nhấn vào liên kết sau để xác nhận email:\n\n" +
+            link + "\n\n" +
+            "Liên kết có hiệu lực trong 1 giờ.\n" +
             "Nếu bạn không yêu cầu, hãy bỏ qua email này."
         );
-        mailSender.send(msg);
     }
 }

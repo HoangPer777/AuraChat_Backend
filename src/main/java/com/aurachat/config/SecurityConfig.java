@@ -50,7 +50,11 @@ public class SecurityConfig {
                     "/api/auth/login",
                     "/api/auth/refresh",
                     "/api/auth/forgot-password",
+                    "/api/auth/forgot-password/status",
+                    "/api/auth/verify-forgot-password",
                     "/api/auth/reset-password",
+                    "/api/auth/verify-email",
+                    "/api/auth/resend-verification",
                     "/api/auth/firebase/**",
                     "/auth/**"
                 ).permitAll()

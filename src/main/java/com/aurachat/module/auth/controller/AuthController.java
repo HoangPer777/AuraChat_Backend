@@ -21,14 +21,15 @@ public class AuthController {
 
     private final AuthService authService;
     private final ForgotPasswordService forgotPasswordService;
+    private final EmailVerificationService emailVerificationService;
     private final AvatarUploadService avatarUploadService;
     private final FirebaseAuthService firebaseAuthService;
     private final FcmTokenService fcmTokenService;
 
     @PostMapping("/register")
-    public ResponseEntity<DataResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest req) {
-        AuthResponse authResponse = authService.register(req);
-        return ResponseEntity.ok(DataResponse.success(authResponse, "User registered successfully"));
+    public ResponseEntity<DataResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest req) {
+        RegisterResponse response = authService.register(req);
+        return ResponseEntity.ok(DataResponse.success(response, response.message()));
     }
 
     @PostMapping("/login")
@@ -56,6 +57,15 @@ public class AuthController {
     ) {
         AuthResponse.UserInfo userInfo = authService.updateProfile(userId, req);
         return ResponseEntity.ok(DataResponse.success(userInfo, "Profile updated successfully"));
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<DataResponse<Void>> changePassword(
+        @AuthenticationPrincipal String userId,
+        @Valid @RequestBody ChangePasswordRequest req
+    ) {
+        authService.changePassword(userId, req);
+        return ResponseEntity.ok(DataResponse.success("Password changed successfully"));
     }
 
     @PostMapping("/logout")
@@ -102,11 +112,33 @@ public class AuthController {
     // ─── Forgot / Reset Password ──────────────────────────────────────────────
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<DataResponse<Void>> forgotPassword(
+    public ResponseEntity<DataResponse<ForgotPasswordResponse>> forgotPassword(
         @Valid @RequestBody ForgotPasswordRequest req
     ) {
-        forgotPasswordService.sendOtp(req.email());
-        return ResponseEntity.ok(DataResponse.success("If that email exists, an OTP has been sent"));
+        ForgotPasswordResponse response = forgotPasswordService.requestResetLink(req.email());
+        return ResponseEntity.ok(DataResponse.success(response, response.message()));
+    }
+
+    @GetMapping("/verify-forgot-password")
+    public ResponseEntity<DataResponse<VerifyForgotPasswordResponse>> verifyForgotPassword(
+        @RequestParam String token
+    ) {
+        String email = forgotPasswordService.verifyResetEmail(token);
+        return ResponseEntity.ok(DataResponse.success(
+            new VerifyForgotPasswordResponse(email),
+            "Email verified for password reset"
+        ));
+    }
+
+    @GetMapping("/forgot-password/status")
+    public ResponseEntity<DataResponse<ForgotPasswordStatusResponse>> forgotPasswordStatus(
+        @RequestParam String email
+    ) {
+        boolean verified = forgotPasswordService.isResetEmailVerified(email);
+        return ResponseEntity.ok(DataResponse.success(
+            new ForgotPasswordStatusResponse(verified),
+            verified ? "Email verified" : "Email not verified yet"
+        ));
     }
 
     @PostMapping("/reset-password")
@@ -115,5 +147,21 @@ public class AuthController {
     ) {
         forgotPasswordService.resetPassword(req);
         return ResponseEntity.ok(DataResponse.success("Password reset successfully"));
+    }
+
+    // ─── Email Verification (Registration) ────────────────────────────────────
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<DataResponse<Void>> verifyEmail(@RequestParam String token) {
+        emailVerificationService.verifyRegistrationEmail(token);
+        return ResponseEntity.ok(DataResponse.success("Email verified successfully"));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<DataResponse<Void>> resendVerification(
+        @Valid @RequestBody ResendVerificationRequest req
+    ) {
+        emailVerificationService.resendVerificationEmail(req.email());
+        return ResponseEntity.ok(DataResponse.success("Verification email sent"));
     }
 }

@@ -218,6 +218,7 @@ public class FirebaseAuthService {
             .avatarUrl(picture)
             .provider(provider)
             .providerId(firebaseUid)
+            .emailVerified(true)
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();

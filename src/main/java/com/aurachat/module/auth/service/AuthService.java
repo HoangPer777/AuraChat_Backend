@@ -3,6 +3,7 @@ package com.aurachat.module.auth.service;
 import com.aurachat.common.exception.AuthenticationException;
 import com.aurachat.common.exception.BusinessLogicException;
 import com.aurachat.common.exception.ErrorCode;
+import com.aurachat.common.exception.ValidationException;
 import com.aurachat.config.JwtUtil;
 import com.aurachat.module.auth.dto.*;
 import com.aurachat.module.auth.entity.RefreshToken;
@@ -25,10 +26,11 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EmailVerificationService emailVerificationService;
 
     // ─── Register ────────────────────────────────────────────────────────────
 
-    public AuthResponse register(RegisterRequest req) {
+    public RegisterResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.email())) {
             throw new BusinessLogicException(
                 ErrorCode.USER_EMAIL_EXISTS, 
@@ -40,15 +42,20 @@ public class AuthService {
             .email(req.email())
             .displayName(req.displayName())
             .passwordHash(passwordEncoder.encode(req.password()))
+            .emailVerified(false)
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();
 
         userRepository.save(user);
+        emailVerificationService.sendRegistrationVerificationEmail(user);
 
-        String accessToken = jwtUtil.generateAccessToken(user.getId());
-        String refreshToken = createRefreshToken(user.getId());
-        return AuthResponse.of(accessToken, refreshToken, user);
+        return new RegisterResponse(
+            user.getEmail(),
+            user.getDisplayName(),
+            true,
+            "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập."
+        );
     }
 
     // ─── Login ────────────────────────────────────────────────────────────────
@@ -69,6 +76,7 @@ public class AuthService {
             );
         }
 
+        ensureEmailVerified(user);
         ensureAccountActive(user, "login");
 
         String accessToken = jwtUtil.generateAccessToken(user.getId());
@@ -120,7 +128,8 @@ public class AuthService {
             ));
         return new AuthResponse.UserInfo(
             user.getId(), user.getEmail(), user.getDisplayName(),
-            user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus()
+            user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus(),
+            user.getProvider()
         );
     }
 
@@ -140,8 +149,47 @@ public class AuthService {
 
         return new AuthResponse.UserInfo(
             user.getId(), user.getEmail(), user.getDisplayName(),
-            user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus()
+            user.getAvatarUrl(), user.getBio(), user.getRole(), user.getStatus(),
+            user.getProvider()
         );
+    }
+
+    // ─── Change password ──────────────────────────────────────────────────────
+
+    public void changePassword(String userId, ChangePasswordRequest req) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new BusinessLogicException(
+                ErrorCode.USER_NOT_FOUND,
+                "User not found"
+            ));
+
+        if (!"LOCAL".equalsIgnoreCase(user.getProvider()) || user.getPasswordHash() == null) {
+            throw new BusinessLogicException(
+                ErrorCode.VALIDATION_FAILED,
+                "Password change is not available for this account"
+            );
+        }
+
+        if (!passwordEncoder.matches(req.currentPassword(), user.getPasswordHash())) {
+            throw new AuthenticationException(
+                ErrorCode.AUTH_INVALID_CREDENTIALS,
+                "Current password is incorrect",
+                "change password"
+            );
+        }
+
+        if (req.currentPassword().equals(req.newPassword())) {
+            throw new ValidationException(
+                ErrorCode.VALIDATION_INVALID_FORMAT,
+                "newPassword",
+                req.newPassword(),
+                "New password must be different from current password"
+            );
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
     }
 
     // ─── Update avatar URL (called by Media_Service flow) ────────────────────
@@ -182,6 +230,16 @@ public class AuthService {
                 ErrorCode.AUTH_ACCOUNT_LOCKED,
                 "Account status is " + user.getStatus(),
                 attemptedAction
+            );
+        }
+    }
+
+    private void ensureEmailVerified(User user) {
+        if (EmailVerificationService.isLocalAccount(user) && Boolean.FALSE.equals(user.getEmailVerified())) {
+            throw new AuthenticationException(
+                ErrorCode.AUTH_EMAIL_NOT_VERIFIED,
+                "Email address is not verified",
+                "login"
             );
         }
     }
