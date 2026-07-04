@@ -207,6 +207,14 @@ public enum ErrorCode {
      * Failed to delete media file
      */
     MEDIA_DELETE_FAILED("MEDIA_006", "Failed to delete media file", HttpStatus.UNPROCESSABLE_ENTITY),
+
+    // ========== Business Logic - Post / Feed ==========
+
+    POST_NOT_FOUND("POST_001", "Post not found", HttpStatus.NOT_FOUND),
+
+    POST_ACCESS_DENIED("POST_002", "Access denied to post", HttpStatus.FORBIDDEN),
+
+    POST_INVALID_CONTENT("POST_003", "Post content is invalid", HttpStatus.BAD_REQUEST),
     
     // ========== System Errors ==========
     
