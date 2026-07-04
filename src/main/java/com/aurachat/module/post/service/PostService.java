@@ -71,11 +71,7 @@ public class PostService {
     public void deletePost(String userId, String postId) {
         Post post = findActivePost(postId);
         if (!post.getAuthorId().equals(userId)) {
-            throw new AuthorizationException(
-                ErrorCode.POST_ACCESS_DENIED,
-                "Only author can delete post",
-                "delete post"
-            );
+            throw new AuthorizationException("post/" + postId, "AUTHOR", userId);
         }
         post.setDeleted(true);
         post.setUpdatedAt(Instant.now());
@@ -166,11 +162,7 @@ public class PostService {
     private void ensureCanViewUserPosts(String viewerId, String authorId) {
         if (viewerId.equals(authorId)) return;
         if (!friendshipRepository.existsByUserIdAndFriendId(viewerId, authorId)) {
-            throw new AuthorizationException(
-                ErrorCode.POST_ACCESS_DENIED,
-                "Cannot view posts from non-friend user",
-                "view user posts"
-            );
+            throw new AuthorizationException("posts/user/" + authorId, "FRIEND", viewerId);
         }
     }
 
@@ -184,11 +176,7 @@ public class PostService {
         if (!viewerId.equals(originalAuthorId)
             && !friendshipRepository.existsByUserIdAndFriendId(viewerId, post.getAuthorId())
             && !friendshipRepository.existsByUserIdAndFriendId(viewerId, originalAuthorId)) {
-            throw new AuthorizationException(
-                ErrorCode.POST_ACCESS_DENIED,
-                "Cannot view this post",
-                "view post"
-            );
+            throw new AuthorizationException("post/" + post.getId(), "FRIEND", viewerId);
         }
     }
 
