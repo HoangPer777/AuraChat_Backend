@@ -45,4 +45,4 @@ admin:
     password: ${ADMIN_PASSWORD:}
 
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  frontend-url: ${FRONTEND_URL:https://aura-chat.io.vn}
