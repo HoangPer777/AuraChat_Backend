@@ -3,7 +3,9 @@ package com.aurachat.module.admin.service;
 import com.aurachat.module.admin.dto.StatisticsResponse;
 import com.aurachat.common.exception.ValidationException;
 import com.aurachat.module.auth.entity.User;
+import com.aurachat.module.media.entity.Media;
 import com.aurachat.module.message.entity.Message;
+import com.aurachat.module.post.entity.Post;
 import com.aurachat.module.presence.service.PresenceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -45,8 +47,13 @@ public class StatisticsService {
         long dau = getDailyActiveUsers(startDate, endDate);
         long messages = getMessageVolume(startDate, endDate);
         long newUsers = getNewUsersCount(startDate, endDate);
-        StatisticsResponse response = new StatisticsResponse(startDate, endDate, dau, messages,
-            newUsers, getOnlineUsersCount(), Instant.now());
+        long totalPosts = getActivePostsCount();
+        long totalMedia = getActiveMediaCount();
+        long totalMediaBytes = getActiveMediaBytes();
+        StatisticsResponse response = new StatisticsResponse(
+            startDate, endDate, dau, messages, newUsers, getOnlineUsersCount(),
+            totalPosts, totalMedia, totalMediaBytes, Instant.now()
+        );
         try {
             redisTemplate.opsForValue().set(cacheKey, redisObjectMapper.writeValueAsString(response), CACHE_TTL);
         } catch (Exception ignored) {
@@ -78,9 +85,29 @@ public class StatisticsService {
         return presenceService.getOnlineUsersCount();
     }
 
+    public long getActivePostsCount() {
+        return mongoTemplate.count(Query.query(Criteria.where("deleted").is(false)), Post.class);
+    }
+
+    public long getActiveMediaCount() {
+        return mongoTemplate.count(Query.query(Criteria.where("deleted").is(false)), Media.class);
+    }
+
+    public long getActiveMediaBytes() {
+        Aggregation aggregation = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("deleted").is(false)),
+            Aggregation.group().sum("size").as("total")
+        );
+        SizeSumResult result = mongoTemplate.aggregate(aggregation, Media.class, SizeSumResult.class)
+            .getUniqueMappedResult();
+        return result == null ? 0 : result.total();
+    }
+
     private Query dateRangeQuery(Instant startDate, Instant endDate) {
         return Query.query(Criteria.where("createdAt").gte(startDate).lt(endDate));
     }
 
     private record CountResult(long count) {}
+
+    private record SizeSumResult(long total) {}
 }

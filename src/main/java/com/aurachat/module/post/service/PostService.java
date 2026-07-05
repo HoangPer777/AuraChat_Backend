@@ -104,17 +104,46 @@ public class PostService {
         Post post = findActivePost(postId);
         ensureCanViewPost(userId, post);
 
+        String parentCommentId = normalizeParentId(req.parentCommentId());
+        PostComment parentComment = null;
+
+        if (parentCommentId != null) {
+            if (!post.getAuthorId().equals(userId)) {
+                throw new AuthorizationException("post/" + postId + "/comment/reply", "POST_AUTHOR", userId);
+            }
+
+            parentComment = postCommentRepository.findByIdAndPostId(parentCommentId, postId)
+                .orElseThrow(() -> new BusinessLogicException(ErrorCode.POST_COMMENT_NOT_FOUND, "Parent comment not found"));
+
+            if (parentComment.getParentCommentId() != null) {
+                throw new ValidationException(
+                    ErrorCode.POST_INVALID_CONTENT,
+                    "parentCommentId",
+                    parentCommentId,
+                    "Can only reply to top-level comments"
+                );
+            }
+        }
+
         PostComment comment = PostComment.builder()
             .postId(postId)
             .authorId(userId)
             .content(req.content().trim())
+            .parentCommentId(parentCommentId)
             .createdAt(Instant.now())
             .build();
         postCommentRepository.save(comment);
 
         User author = userRepository.findById(userId)
             .orElseThrow(() -> new BusinessLogicException(ErrorCode.USER_NOT_FOUND, "User not found"));
-        return toCommentResponse(comment, author);
+
+        AuthorSummary replyTo = null;
+        if (parentComment != null) {
+            User parentAuthor = userRepository.findById(parentComment.getAuthorId()).orElse(null);
+            replyTo = toAuthorSummary(parentAuthor, parentComment.getAuthorId());
+        }
+
+        return toCommentResponse(comment, author, post.getAuthorId(), replyTo, List.of());
     }
 
     public CommentPageResponse getComments(String userId, String postId, int page, int size) {
@@ -122,13 +151,50 @@ public class PostService {
         ensureCanViewPost(userId, post);
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<PostComment> commentPage = postCommentRepository.findByPostIdOrderByCreatedAtAsc(postId, pageable);
-        Map<String, User> users = loadUsers(commentPage.getContent().stream()
-            .map(PostComment::getAuthorId)
-            .collect(Collectors.toSet()));
+        Page<PostComment> commentPage = postCommentRepository
+            .findByPostIdAndParentCommentIdIsNullOrderByCreatedAtAsc(postId, pageable);
 
-        List<CommentResponse> content = commentPage.getContent().stream()
-            .map(comment -> toCommentResponse(comment, users.get(comment.getAuthorId())))
+        List<PostComment> topLevel = commentPage.getContent();
+        List<String> topLevelIds = topLevel.stream().map(PostComment::getId).toList();
+
+        Map<String, List<PostComment>> repliesByParent = topLevelIds.isEmpty()
+            ? Map.of()
+            : postCommentRepository.findByParentCommentIdInOrderByCreatedAtAsc(topLevelIds).stream()
+                .collect(Collectors.groupingBy(PostComment::getParentCommentId));
+
+        Set<String> userIds = new HashSet<>();
+        topLevel.forEach(c -> userIds.add(c.getAuthorId()));
+        repliesByParent.values().forEach(replies ->
+            replies.forEach(r -> {
+                userIds.add(r.getAuthorId());
+            })
+        );
+        Map<String, User> users = loadUsers(userIds);
+
+        List<CommentResponse> content = topLevel.stream()
+            .map(comment -> {
+                List<PostComment> replies = repliesByParent.getOrDefault(comment.getId(), List.of());
+                List<CommentResponse> replyResponses = replies.stream()
+                    .map(reply -> {
+                        User replyAuthor = users.get(reply.getAuthorId());
+                        User parentAuthor = users.get(comment.getAuthorId());
+                        return toCommentResponse(
+                            reply,
+                            replyAuthor,
+                            post.getAuthorId(),
+                            toAuthorSummary(parentAuthor, comment.getAuthorId()),
+                            List.of()
+                        );
+                    })
+                    .toList();
+                return toCommentResponse(
+                    comment,
+                    users.get(comment.getAuthorId()),
+                    post.getAuthorId(),
+                    null,
+                    replyResponses
+                );
+            })
             .toList();
 
         return CommentPageResponse.of(content, page, size, commentPage.getTotalElements());
@@ -277,13 +343,30 @@ public class PostService {
             .collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
-    private CommentResponse toCommentResponse(PostComment comment, User author) {
+    private CommentResponse toCommentResponse(
+        PostComment comment,
+        User author,
+        String postAuthorId,
+        AuthorSummary replyTo,
+        List<CommentResponse> replies
+    ) {
         return new CommentResponse(
             comment.getId(),
             toAuthorSummary(author, comment.getAuthorId()),
             comment.getContent(),
-            comment.getCreatedAt()
+            comment.getCreatedAt(),
+            comment.getParentCommentId(),
+            replyTo,
+            replies,
+            postAuthorId != null && postAuthorId.equals(comment.getAuthorId())
         );
+    }
+
+    private String normalizeParentId(String parentCommentId) {
+        if (parentCommentId == null || parentCommentId.isBlank()) {
+            return null;
+        }
+        return parentCommentId.trim();
     }
 
     private AuthorSummary toAuthorSummary(User user, String userId) {

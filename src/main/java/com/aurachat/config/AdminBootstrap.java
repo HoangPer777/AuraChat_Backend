@@ -51,6 +51,10 @@ public class AdminBootstrap implements CommandLineRunner {
             if (admin.getEmailVerified() == null || !admin.getEmailVerified()) {
                 admin.setEmailVerified(true);
             }
+            if (adminPassword != null && adminPassword.length() >= 8) {
+                admin.setPasswordHash(passwordEncoder.encode(adminPassword));
+                log.info("Admin bootstrap updated password for email={}", email);
+            }
             admin.setUpdatedAt(Instant.now());
         }
         userRepository.save(admin);

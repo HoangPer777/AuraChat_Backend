@@ -26,6 +26,8 @@ public class AdminController {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private final AdminService adminService;
     private final StatisticsService statisticsService;
+    private final AdminMediaService adminMediaService;
+    private final AdminPostService adminPostService;
 
     @GetMapping("/users")
     public DataResponse<PageResponse<AdminUserDto>> getUsers(
@@ -97,5 +99,73 @@ public class AdminController {
         Instant startInstant = start.atStartOfDay(BUSINESS_ZONE).toInstant();
         Instant endInstant = endExclusive.atStartOfDay(BUSINESS_ZONE).toInstant();
         return DataResponse.success(statisticsService.getStatistics(startInstant, endInstant));
+    }
+
+    @GetMapping("/media")
+    public DataResponse<PageResponse<AdminMediaDto>> getMedia(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String mediaType,
+            @RequestParam(required = false) String ownerId,
+            @RequestParam(required = false) Boolean includeDeleted) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return DataResponse.success(adminMediaService.getAllMedia(pageable, q, mediaType, ownerId, includeDeleted));
+    }
+
+    @GetMapping("/media/stats")
+    public DataResponse<AdminMediaStatsResponse> getMediaStats() {
+        return DataResponse.success(adminMediaService.getStats());
+    }
+
+    @GetMapping("/media/{id}")
+    public DataResponse<AdminMediaDto> getMedia(@PathVariable String id) {
+        return DataResponse.success(adminMediaService.getMediaById(id));
+    }
+
+    @DeleteMapping("/media/{id}")
+    public DataResponse<Void> deleteMedia(@AuthenticationPrincipal String adminId, @PathVariable String id) {
+        adminMediaService.deleteMedia(id, adminId);
+        return DataResponse.success("Media deleted");
+    }
+
+    @GetMapping("/posts")
+    public DataResponse<PageResponse<AdminPostDto>> getPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String authorId,
+            @RequestParam(required = false) Boolean includeDeleted) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return DataResponse.success(adminPostService.getAllPosts(pageable, q, authorId, includeDeleted));
+    }
+
+    @GetMapping("/posts/{id}")
+    public DataResponse<AdminPostDto> getPost(@PathVariable String id) {
+        return DataResponse.success(adminPostService.getPostById(id));
+    }
+
+    @GetMapping("/posts/{id}/comments")
+    public DataResponse<PageResponse<AdminPostCommentDto>> getPostComments(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.ASC, "createdAt"));
+        return DataResponse.success(adminPostService.getPostComments(id, pageable));
+    }
+
+    @DeleteMapping("/posts/{id}")
+    public DataResponse<Void> deletePost(@AuthenticationPrincipal String adminId, @PathVariable String id) {
+        adminPostService.deletePost(id, adminId);
+        return DataResponse.success("Post deleted");
+    }
+
+    @DeleteMapping("/posts/comments/{commentId}")
+    public DataResponse<Void> deleteComment(@AuthenticationPrincipal String adminId, @PathVariable String commentId) {
+        adminPostService.deleteComment(commentId, adminId);
+        return DataResponse.success("Comment deleted");
     }
 }

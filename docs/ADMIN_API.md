@@ -29,6 +29,15 @@ After changing an existing account's role, log in again so the frontend user sta
 | DELETE | `/api/admin/ban-ip/{ipAddress}` | Remove an IP ban |
 | GET | `/api/admin/banned-ips?page=0&size=20` | List banned IPs |
 | GET | `/api/admin/statistics?startDate=2026-06-01&endDate=2026-06-21` | Get dashboard statistics |
+| GET | `/api/admin/media?page=0&size=20&q=&mediaType=&ownerId=&includeDeleted=` | Search and paginate media |
+| GET | `/api/admin/media/stats` | Media storage statistics |
+| GET | `/api/admin/media/{id}` | Get media detail with owner info |
+| DELETE | `/api/admin/media/{id}` | Delete media from ImageKit and database |
+| GET | `/api/admin/posts?page=0&size=20&q=&authorId=&includeDeleted=` | Search and paginate posts |
+| GET | `/api/admin/posts/{id}` | Get post detail with engagement counts |
+| GET | `/api/admin/posts/{id}/comments?page=0&size=50` | List post comments |
+| DELETE | `/api/admin/posts/{id}` | Soft-delete a post |
+| DELETE | `/api/admin/posts/comments/{commentId}` | Delete a comment (and replies if top-level) |
 
 ## User state rules
 

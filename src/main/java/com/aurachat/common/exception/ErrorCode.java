@@ -215,6 +215,8 @@ public enum ErrorCode {
     POST_ACCESS_DENIED("POST_002", "Access denied to post", HttpStatus.FORBIDDEN),
 
     POST_INVALID_CONTENT("POST_003", "Post content is invalid", HttpStatus.BAD_REQUEST),
+
+    POST_COMMENT_NOT_FOUND("POST_004", "Comment not found", HttpStatus.NOT_FOUND),
     
     // ========== System Errors ==========
     

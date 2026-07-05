@@ -137,13 +137,22 @@ public class MediaService {
     public void deleteMedia(String userId, String mediaId) {
         Media media = findExistingMedia(mediaId);
         ensureOwnership(userId, media);
+        performDelete(media);
+    }
 
+    public void adminDeleteMedia(String mediaId, String adminId) {
+        Media media = findExistingMedia(mediaId);
+        performDelete(media);
+        log.info("Admin action=DELETE_MEDIA adminId={} mediaId={} ownerId={}", adminId, mediaId, media.getOwnerId());
+    }
+
+    private void performDelete(Media media) {
         try {
             if (media.getFileId() != null && !media.getFileId().isBlank()) {
                 imageKit.files().delete(media.getFileId());
             }
         } catch (Exception e) {
-            log.error("Failed to delete media {} from ImageKit", mediaId, e);
+            log.error("Failed to delete media {} from ImageKit", media.getId(), e);
             throw new SystemException(
                 ErrorCode.MEDIA_DELETE_FAILED,
                 "ImageKit",

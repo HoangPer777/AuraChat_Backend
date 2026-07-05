@@ -9,5 +9,8 @@ public record StatisticsResponse(
     long messageVolume,
     long newUsersCount,
     long onlineUsersCount,
+    long totalPostsCount,
+    long totalMediaCount,
+    long totalMediaBytes,
     Instant generatedAt
 ) {}
