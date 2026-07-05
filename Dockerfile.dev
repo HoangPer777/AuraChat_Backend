@@ -1,0 +1,21 @@
+# Local dev: build từ source khi chưa có sẵn target/*.jar
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
+WORKDIR /app
+
+COPY pom.xml .
+RUN for attempt in 1 2 3; do \
+      mvn -B -Dmaven.wagon.http.retryHandler.count=5 dependency:go-offline && break; \
+      if [ "$attempt" = "3" ]; then exit 1; fi; \
+      echo "Maven download failed (attempt $attempt/3), retrying..."; \
+      sleep 5; \
+    done
+
+COPY src ./src
+RUN mvn -B -Dmaven.wagon.http.retryHandler.count=5 clean package -DskipTests
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

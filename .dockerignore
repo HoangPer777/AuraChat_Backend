@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+*.iml
+docs
+src/test
+**/*.md
+.env
+.env.*
+serviceAccountKey.json

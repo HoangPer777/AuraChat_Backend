@@ -19,7 +19,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      # Bước này build sẵn file JAR để Dockerfile bên EC2 chỉ việc copy, giúp build nhanh hơn
+      # Build JAR trên GitHub Actions; EC2 chỉ copy target/*.jar vào image (không build Maven lại).
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
@@ -41,13 +41,21 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/project-be
-            
+
+            # Giải phóng dung lượng ổ đĩa (tránh "no space left on device")
+            docker-compose down --remove-orphans 2>/dev/null || true
+            docker image prune -af 2>/dev/null || true
+            docker builder prune -af 2>/dev/null || true
+            docker container prune -f 2>/dev/null || true
+
             # Tạo file cấu hình
             printf '%s' '${{ secrets.ENV_FILE_CONTENT }}' > .env
             printf '%s' '${{ secrets.FIREBASE_CONFIG }}' > serviceAccountKey.json
-            
-            # Tắt Buildx bằng biến DOCKER_BUILDKIT=0 và COMPOSE_DOCKER_CLI_BUILD=0
-            docker-compose down
-            export DOCKER_BUILDKIT=0
-            export COMPOSE_DOCKER_CLI_BUILD=0
+
+            if ! ls target/*.jar >/dev/null 2>&1; then
+              echo "ERROR: target/*.jar not found. GitHub Actions Maven build may have failed."
+              exit 1
+            fi
+
+            # JAR đã build trên GitHub Actions — Dockerfile chỉ copy target/*.jar
             docker-compose up --build -d
