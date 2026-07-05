@@ -2,6 +2,8 @@ package com.aurachat.module.admin.controller;
 
 import com.aurachat.common.response.DataResponse;
 import com.aurachat.module.admin.dto.*;
+import com.aurachat.module.admin.service.AdminMediaService;
+import com.aurachat.module.admin.service.AdminPostService;
 import com.aurachat.module.admin.service.AdminService;
 import com.aurachat.module.admin.service.StatisticsService;
 import jakarta.validation.Valid;
