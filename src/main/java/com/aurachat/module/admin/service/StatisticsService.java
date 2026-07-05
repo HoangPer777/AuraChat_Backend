@@ -1,6 +1,8 @@
 package com.aurachat.module.admin.service;
 
 import com.aurachat.module.admin.dto.StatisticsResponse;
+import com.aurachat.module.admin.dto.StatisticsTrendResponse;
+import com.aurachat.module.admin.dto.DailyTrendPoint;
 import com.aurachat.common.exception.ValidationException;
 import com.aurachat.module.auth.entity.User;
 import com.aurachat.module.media.entity.Media;
@@ -18,12 +20,17 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class StatisticsService {
 
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private final MongoTemplate mongoTemplate;
     private final PresenceService presenceService;
     private final RedisTemplate<String, String> redisTemplate;
@@ -60,6 +67,33 @@ public class StatisticsService {
             // Statistics remain available even if cache serialization fails.
         }
         return response;
+    }
+
+    public StatisticsTrendResponse getTrends(Instant startDate, Instant endDate) {
+        if (startDate == null || endDate == null || !startDate.isBefore(endDate)) {
+            throw new ValidationException("dateRange", startDate + " - " + endDate,
+                "startDate must be before endDate");
+        }
+        LocalDate startDay = startDate.atZone(BUSINESS_ZONE).toLocalDate();
+        LocalDate endDay = endDate.atZone(BUSINESS_ZONE).toLocalDate();
+        if (!endDay.isAfter(startDay)) {
+            endDay = startDay;
+        } else {
+            endDay = endDay.minusDays(1);
+        }
+
+        List<DailyTrendPoint> points = new ArrayList<>();
+        for (LocalDate day = startDay; !day.isAfter(endDay); day = day.plusDays(1)) {
+            Instant dayStart = day.atStartOfDay(BUSINESS_ZONE).toInstant();
+            Instant dayEnd = day.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant();
+            points.add(new DailyTrendPoint(
+                day.toString(),
+                getMessageVolume(dayStart, dayEnd),
+                getNewUsersCount(dayStart, dayEnd),
+                getDailyActiveUsers(dayStart, dayEnd)
+            ));
+        }
+        return new StatisticsTrendResponse(points);
     }
 
     public long getDailyActiveUsers(Instant startDate, Instant endDate) {

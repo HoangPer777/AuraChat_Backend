@@ -107,6 +107,17 @@ public class AdminController {
         return DataResponse.success(statisticsService.getStatistics(startInstant, endInstant));
     }
 
+    @GetMapping("/statistics/trends")
+    public DataResponse<StatisticsTrendResponse> statisticsTrends(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        LocalDate endExclusive = endDate == null ? LocalDate.now(BUSINESS_ZONE).plusDays(1) : endDate.plusDays(1);
+        LocalDate start = startDate == null ? endExclusive.minusDays(1) : startDate;
+        Instant startInstant = start.atStartOfDay(BUSINESS_ZONE).toInstant();
+        Instant endInstant = endExclusive.atStartOfDay(BUSINESS_ZONE).toInstant();
+        return DataResponse.success(statisticsService.getTrends(startInstant, endInstant));
+    }
+
     @GetMapping("/media")
     public DataResponse<PageResponse<AdminMediaDto>> getMedia(
             @RequestParam(defaultValue = "0") int page,
