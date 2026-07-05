@@ -14,6 +14,7 @@ import com.aurachat.module.post.entity.PostLike;
 import com.aurachat.module.post.repository.PostCommentRepository;
 import com.aurachat.module.post.repository.PostLikeRepository;
 import com.aurachat.module.post.repository.PostRepository;
+import com.aurachat.module.moderation.service.ContentModerationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +37,7 @@ public class PostService {
     private final PostCommentRepository postCommentRepository;
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final ContentModerationService contentModerationService;
 
     public PostResponse createPost(String userId, CreatePostRequest req) {
         validatePostContent(req.content(), req.imageUrls());
@@ -49,6 +51,7 @@ public class PostService {
             .build();
 
         postRepository.save(post);
+        contentModerationService.flagPostIfNeeded(post.getId(), userId, post.getContent());
         return toPostResponse(post, userId, Map.of(), Map.of());
     }
 
@@ -133,6 +136,8 @@ public class PostService {
             .createdAt(Instant.now())
             .build();
         postCommentRepository.save(comment);
+
+        contentModerationService.flagCommentIfNeeded(comment.getId(), userId, comment.getContent());
 
         User author = userRepository.findById(userId)
             .orElseThrow(() -> new BusinessLogicException(ErrorCode.USER_NOT_FOUND, "User not found"));

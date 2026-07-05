@@ -6,6 +6,8 @@ import com.aurachat.module.admin.service.AdminMediaService;
 import com.aurachat.module.admin.service.AdminPostService;
 import com.aurachat.module.admin.service.AdminService;
 import com.aurachat.module.admin.service.StatisticsService;
+import com.aurachat.module.moderation.dto.*;
+import com.aurachat.module.moderation.service.AdminModerationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +20,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -30,6 +33,7 @@ public class AdminController {
     private final StatisticsService statisticsService;
     private final AdminMediaService adminMediaService;
     private final AdminPostService adminPostService;
+    private final AdminModerationService adminModerationService;
 
     @GetMapping("/users")
     public DataResponse<PageResponse<AdminUserDto>> getUsers(
@@ -169,5 +173,70 @@ public class AdminController {
     public DataResponse<Void> deleteComment(@AuthenticationPrincipal String adminId, @PathVariable String commentId) {
         adminPostService.deleteComment(commentId, adminId);
         return DataResponse.success("Comment deleted");
+    }
+
+    @GetMapping("/moderation/flags")
+    public DataResponse<PageResponse<ModerationFlagDto>> getModerationFlags(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String contentType) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return DataResponse.success(adminModerationService.getFlags(pageable, status, contentType));
+    }
+
+    @GetMapping("/moderation/flags/stats")
+    public DataResponse<ModerationFlagStatsResponse> getModerationStats() {
+        return DataResponse.success(adminModerationService.getStats());
+    }
+
+    @PostMapping("/moderation/flags/{id}/dismiss")
+    public DataResponse<ModerationFlagDto> dismissFlag(@AuthenticationPrincipal String adminId,
+                                                       @PathVariable String id,
+                                                       @RequestBody(required = false) ReviewNoteRequest request) {
+        String note = request == null ? null : request.note();
+        return DataResponse.success(adminModerationService.dismissFlag(id, adminId, note), "Flag dismissed");
+    }
+
+    @PostMapping("/moderation/flags/{id}/remove-content")
+    public DataResponse<ModerationFlagDto> removeFlaggedContent(@AuthenticationPrincipal String adminId,
+                                                                @PathVariable String id,
+                                                                @RequestBody(required = false) ReviewNoteRequest request) {
+        String note = request == null ? null : request.note();
+        return DataResponse.success(adminModerationService.removeContent(id, adminId, note), "Content removed");
+    }
+
+    @PostMapping("/moderation/flags/{id}/warn-user")
+    public DataResponse<ModerationFlagDto> warnUser(@AuthenticationPrincipal String adminId,
+                                                    @PathVariable String id,
+                                                    @Valid @RequestBody WarnUserRequest request) {
+        return DataResponse.success(adminModerationService.warnUser(id, adminId, request.message()), "User warned");
+    }
+
+    @PostMapping("/moderation/media/{mediaId}/flag")
+    @ResponseStatus(HttpStatus.CREATED)
+    public DataResponse<ModerationFlagDto> flagMedia(@AuthenticationPrincipal String adminId,
+                                                     @PathVariable String mediaId,
+                                                     @RequestBody(required = false) FlagMediaRequest request) {
+        String note = request == null ? null : request.note();
+        return DataResponse.success(adminModerationService.flagMedia(mediaId, adminId, note), "Media flagged");
+    }
+
+    @GetMapping("/moderation/keywords")
+    public DataResponse<List<ModerationKeywordDto>> getKeywords() {
+        return DataResponse.success(adminModerationService.getKeywords());
+    }
+
+    @PostMapping("/moderation/keywords")
+    @ResponseStatus(HttpStatus.CREATED)
+    public DataResponse<ModerationKeywordDto> addKeyword(@Valid @RequestBody CreateKeywordRequest request) {
+        return DataResponse.success(adminModerationService.addKeyword(request.word()), "Keyword added");
+    }
+
+    @DeleteMapping("/moderation/keywords/{id}")
+    public DataResponse<Void> deleteKeyword(@PathVariable String id) {
+        adminModerationService.deleteKeyword(id);
+        return DataResponse.success("Keyword deleted");
     }
 }

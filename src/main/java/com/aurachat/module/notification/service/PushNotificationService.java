@@ -112,8 +112,33 @@ public class PushNotificationService {
             ));
     }
 
+    public void notifyModerationWarning(String userId, String message) {
+        if (userId == null || message == null || message.isBlank()) {
+            return;
+        }
+        sendToUser(userId, "MODERATION", "Cảnh báo nội dung",
+            message, Map.of(
+                "route", "/profile",
+                "tag", "moderation-warn"
+            ), true);
+    }
+
     private void sendToUser(String userId, String type, String title, String body, Map<String, String> data) {
+        sendToUser(userId, type, title, body, data, false);
+    }
+
+    private void sendToUser(
+        String userId,
+        String type,
+        String title,
+        String body,
+        Map<String, String> data,
+        boolean forceWhenOnline
+    ) {
         if (!isFirebaseReady()) {
+            return;
+        }
+        if (!forceWhenOnline && presenceService.isOnline(userId)) {
             return;
         }
 

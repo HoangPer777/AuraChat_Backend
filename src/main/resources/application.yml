@@ -46,3 +46,9 @@ admin:
 
 app:
   frontend-url: ${FRONTEND_URL:https://aura-chat.io.vn}
+
+sightengine:
+  api-user: ${SIGHTENGINE_API_USER:}
+  api-secret: ${SIGHTENGINE_API_SECRET:}
+  enabled: ${SIGHTENGINE_ENABLED:true}
+  nudity-threshold: ${SIGHTENGINE_NUDITY_THRESHOLD:0.55}

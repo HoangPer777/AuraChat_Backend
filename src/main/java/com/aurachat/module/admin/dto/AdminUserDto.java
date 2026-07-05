@@ -15,11 +15,12 @@ public record AdminUserDto(
     Instant lastSeen,
     Instant createdAt,
     Instant updatedAt,
+    int warningCount,
     boolean online
 ) {
     public static AdminUserDto from(User user, boolean online) {
         return new AdminUserDto(user.getId(), user.getEmail(), user.getDisplayName(),
             user.getAvatarUrl(), user.getBio(), user.getProvider(), user.getRole(), user.getStatus(),
-            user.getLastSeen(), user.getCreatedAt(), user.getUpdatedAt(), online);
+            user.getLastSeen(), user.getCreatedAt(), user.getUpdatedAt(), user.getWarningCount(), online);
     }
 }

@@ -38,6 +38,17 @@ After changing an existing account's role, log in again so the frontend user sta
 | GET | `/api/admin/posts/{id}/comments?page=0&size=50` | List post comments |
 | DELETE | `/api/admin/posts/{id}` | Soft-delete a post |
 | DELETE | `/api/admin/posts/comments/{commentId}` | Delete a comment (and replies if top-level) |
+| GET | `/api/admin/moderation/flags?status=PENDING&contentType=POST` | Moderation queue |
+| GET | `/api/admin/moderation/flags/stats` | Pending counts by type |
+| POST | `/api/admin/moderation/flags/{id}/dismiss` | Dismiss flag, keep content |
+| POST | `/api/admin/moderation/flags/{id}/remove-content` | Delete flagged content |
+| POST | `/api/admin/moderation/flags/{id}/warn-user` | Warn user (FCM + warningCount) |
+| POST | `/api/admin/moderation/media/{mediaId}/flag` | Manually flag media |
+| GET/POST/DELETE | `/api/admin/moderation/keywords` | Manage sensitive keywords |
+
+## Image moderation (Sightengine)
+
+When `SIGHTENGINE_API_USER` and `SIGHTENGINE_API_SECRET` are set, every image upload is checked with Sightengine `nudity-2.1`. Sensitive images create a `MEDIA` flag with reason `SENSITIVE_IMAGE`.
 
 ## User state rules
 

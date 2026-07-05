@@ -217,6 +217,13 @@ public enum ErrorCode {
     POST_INVALID_CONTENT("POST_003", "Post content is invalid", HttpStatus.BAD_REQUEST),
 
     POST_COMMENT_NOT_FOUND("POST_004", "Comment not found", HttpStatus.NOT_FOUND),
+
+    // ========== Business Logic - Content Moderation ==========
+
+    MODERATION_FLAG_NOT_FOUND("MOD_001", "Moderation flag not found", HttpStatus.NOT_FOUND),
+    MODERATION_FLAG_ALREADY_REVIEWED("MOD_002", "Moderation flag already reviewed", HttpStatus.UNPROCESSABLE_ENTITY),
+    MODERATION_KEYWORD_EXISTS("MOD_003", "Keyword already exists", HttpStatus.UNPROCESSABLE_ENTITY),
+    MODERATION_KEYWORD_NOT_FOUND("MOD_004", "Keyword not found", HttpStatus.NOT_FOUND),
     
     // ========== System Errors ==========
     

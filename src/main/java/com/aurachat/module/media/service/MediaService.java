@@ -9,6 +9,7 @@ import com.aurachat.module.media.dto.MediaPageResponse;
 import com.aurachat.module.media.dto.MediaResponse;
 import com.aurachat.module.media.entity.Media;
 import com.aurachat.module.media.repository.MediaRepository;
+import com.aurachat.module.moderation.service.ContentModerationService;
 import io.imagekit.client.ImageKitClient;
 import io.imagekit.models.files.FileUploadParams;
 import io.imagekit.models.files.FileUploadResponse;
@@ -99,6 +100,7 @@ public class MediaService {
     private final ImageKitClient imageKit;
     private final StringRedisTemplate redisTemplate;
     private final MediaRepository mediaRepository;
+    private final ContentModerationService contentModerationService;
 
     public MediaResponse uploadImage(MultipartFile file, String userId) {
         enforceUploadRateLimit(userId);
@@ -215,6 +217,11 @@ public class MediaService {
                 .mediaType(mediaType)
                 .createdAt(Instant.now())
                 .build());
+
+            if ("IMAGE".equals(mediaType)) {
+                contentModerationService.flagUploadedImageIfNeeded(media.getId(), userId, url);
+            }
+
             return toResponse(media);
         } catch (IOException e) {
             log.error("Failed to read media file for user {}: {}", userId, e.getMessage(), e);

@@ -60,6 +60,10 @@ public class User {
     @Builder.Default
     private Boolean emailVerified = false;
 
+    /** Số lần bị admin cảnh báo vi phạm nội dung */
+    @Builder.Default
+    private int warningCount = 0;
+
     @Indexed
     private Instant createdAt;
 
