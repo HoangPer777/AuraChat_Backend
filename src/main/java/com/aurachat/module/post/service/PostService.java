@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -57,7 +58,7 @@ public class PostService {
 
     public PostPageResponse getFeed(String userId, int page, int size) {
         Set<String> authorIds = getFeedAuthorIds(userId);
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> postPage = postRepository.findByAuthorIdInAndDeletedFalseOrderByCreatedAtDesc(authorIds, pageable);
         List<PostResponse> content = enrichPosts(postPage.getContent(), userId);
         return PostPageResponse.of(content, page, size, postPage.getTotalElements());
@@ -65,7 +66,7 @@ public class PostService {
 
     public PostPageResponse getUserPosts(String viewerId, String authorId, int page, int size) {
         ensureCanViewUserPosts(viewerId, authorId);
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> postPage = postRepository.findByAuthorIdAndDeletedFalseOrderByCreatedAtDesc(authorId, pageable);
         List<PostResponse> content = enrichPosts(postPage.getContent(), viewerId);
         return PostPageResponse.of(content, page, size, postPage.getTotalElements());
