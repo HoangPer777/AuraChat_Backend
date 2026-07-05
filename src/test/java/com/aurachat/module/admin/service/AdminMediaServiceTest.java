@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,16 +59,22 @@ class AdminMediaServiceTest {
 
     @Test
     void getStats_aggregatesCounts() {
-        when(mongoTemplate.count(any(), eq(Media.class))).thenReturn(10L, 8L);
+        when(mongoTemplate.count(any(), eq(Media.class))).thenReturn(10L, 8L, 3L, 2L, 1L);
+        @SuppressWarnings("unchecked")
+        org.springframework.data.mongodb.core.aggregation.AggregationResults<AdminMediaService.SizeSumResult> aggregationResults =
+            mock(org.springframework.data.mongodb.core.aggregation.AggregationResults.class);
+        when(aggregationResults.getUniqueMappedResult()).thenReturn(new AdminMediaService.SizeSumResult(2048L));
         when(mongoTemplate.aggregate(any(), eq(Media.class), eq(AdminMediaService.SizeSumResult.class)))
-            .thenReturn(new org.springframework.data.mongodb.core.aggregation.AggregationResults<>(
-                List.of(new AdminMediaService.SizeSumResult(2048L)), Media.class));
+            .thenReturn(aggregationResults);
 
         var stats = adminMediaService.getStats();
 
         assertThat(stats.totalCount()).isEqualTo(10);
         assertThat(stats.activeCount()).isEqualTo(8);
         assertThat(stats.totalBytes()).isEqualTo(2048L);
+        assertThat(stats.imageCount()).isEqualTo(3);
+        assertThat(stats.fileCount()).isEqualTo(2);
+        assertThat(stats.audioCount()).isEqualTo(1);
     }
 
     private Media media(String id, String ownerId) {
