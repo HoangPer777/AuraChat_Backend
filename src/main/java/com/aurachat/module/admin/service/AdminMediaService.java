@@ -33,6 +33,7 @@ public class AdminMediaService {
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
     private final MediaService mediaService;
+    private final AdminPostService adminPostService;
 
     public PageResponse<AdminMediaDto> getAllMedia(
         Pageable pageable,
@@ -80,7 +81,9 @@ public class AdminMediaService {
     }
 
     public void deleteMedia(String mediaId, String adminId) {
+        Media media = requireMedia(mediaId);
         mediaService.adminDeleteMedia(mediaId, adminId);
+        adminPostService.deletePostsReferencingImageUrl(media.getUrl(), adminId);
     }
 
     private Query buildMediaQuery(String queryText, String mediaType, String ownerId, Boolean includeDeleted) {

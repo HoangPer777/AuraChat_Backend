@@ -79,10 +79,29 @@ public class AdminPostService {
         if (post.isDeleted()) {
             throw new BusinessLogicException(ErrorCode.POST_NOT_FOUND, "Post already deleted");
         }
-        post.setDeleted(true);
-        post.setUpdatedAt(Instant.now());
-        postRepository.save(post);
+        markPostDeleted(post);
         log.info("Admin action=DELETE_POST adminId={} postId={}", adminId, postId);
+        softDeleteSharesOf(postId, adminId);
+    }
+
+    /** Xóa mềm mọi bài đăng đang dùng URL ảnh (sau khi admin gỡ media nhạy cảm). */
+    public void deletePostsReferencingImageUrl(String imageUrl, String adminId) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        Query query = Query.query(
+            Criteria.where("deleted").ne(true).and("imageUrls").is(imageUrl.trim())
+        );
+        List<Post> posts = mongoTemplate.find(query, Post.class);
+        for (Post post : posts) {
+            if (post.isDeleted()) {
+                continue;
+            }
+            markPostDeleted(post);
+            log.info("Admin action=DELETE_POST_IMAGE_CASCADE adminId={} postId={} imageUrl={}",
+                adminId, post.getId(), imageUrl);
+            softDeleteSharesOf(post.getId(), adminId);
+        }
     }
 
     public void deleteComment(String commentId, String adminId) {
@@ -147,6 +166,23 @@ public class AdminPostService {
         if (authorIds.isEmpty()) return Map.of();
         return userRepository.findAllById(authorIds).stream()
             .collect(Collectors.toMap(User::getId, user -> user));
+    }
+
+    private void markPostDeleted(Post post) {
+        post.setDeleted(true);
+        post.setUpdatedAt(Instant.now());
+        postRepository.save(post);
+    }
+
+    private void softDeleteSharesOf(String originalPostId, String adminId) {
+        Query query = Query.query(
+            Criteria.where("originalPostId").is(originalPostId).and("deleted").ne(true)
+        );
+        for (Post share : mongoTemplate.find(query, Post.class)) {
+            markPostDeleted(share);
+            log.info("Admin action=DELETE_SHARE_CASCADE adminId={} sharePostId={} originalPostId={}",
+                adminId, share.getId(), originalPostId);
+        }
     }
 
     private Post requirePost(String postId) {

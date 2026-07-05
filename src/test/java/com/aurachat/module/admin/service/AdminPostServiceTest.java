@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,11 +22,14 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AdminPostServiceTest {
 
+    @Mock MongoTemplate mongoTemplate;
     @Mock PostRepository postRepository;
     @Mock PostLikeRepository postLikeRepository;
     @Mock PostCommentRepository postCommentRepository;
@@ -36,8 +41,52 @@ class AdminPostServiceTest {
         Post post = post("post-1", "user-1", false);
         when(postRepository.findById("post-1")).thenReturn(Optional.of(post));
         when(postRepository.save(post)).thenReturn(post);
+        when(mongoTemplate.find(any(Query.class), eq(Post.class))).thenReturn(List.of());
 
         adminPostService.deletePost("post-1", "admin-1");
+
+        assertThat(post.isDeleted()).isTrue();
+        verify(postRepository).save(post);
+    }
+
+    @Test
+    void deletePost_cascadesToSharePosts() {
+        Post post = post("post-1", "user-1", false);
+        Post share = Post.builder()
+            .id("share-1")
+            .authorId("user-2")
+            .originalPostId("post-1")
+            .content("Shared")
+            .createdAt(Instant.now())
+            .deleted(false)
+            .build();
+        when(postRepository.findById("post-1")).thenReturn(Optional.of(post));
+        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.find(any(Query.class), eq(Post.class))).thenReturn(List.of(share));
+
+        adminPostService.deletePost("post-1", "admin-1");
+
+        assertThat(post.isDeleted()).isTrue();
+        assertThat(share.isDeleted()).isTrue();
+        verify(postRepository, times(2)).save(any(Post.class));
+    }
+
+    @Test
+    void deletePostsReferencingImageUrl_softDeletesMatchingPosts() {
+        Post post = Post.builder()
+            .id("post-img")
+            .authorId("user-1")
+            .content("Photo")
+            .imageUrls(List.of("https://cdn.example/a.png"))
+            .createdAt(Instant.now())
+            .deleted(false)
+            .build();
+        when(mongoTemplate.find(any(Query.class), eq(Post.class)))
+            .thenReturn(List.of(post))
+            .thenReturn(List.of());
+        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        adminPostService.deletePostsReferencingImageUrl("https://cdn.example/a.png", "admin-1");
 
         assertThat(post.isDeleted()).isTrue();
         verify(postRepository).save(post);

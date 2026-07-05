@@ -27,6 +27,7 @@ class AdminMediaServiceTest {
     @Mock MongoTemplate mongoTemplate;
     @Mock UserRepository userRepository;
     @Mock MediaService mediaService;
+    @Mock AdminPostService adminPostService;
     @InjectMocks AdminMediaService adminMediaService;
 
     @Test
@@ -52,9 +53,14 @@ class AdminMediaServiceTest {
     }
 
     @Test
-    void deleteMedia_delegatesToMediaService() {
+    void deleteMedia_delegatesToMediaServiceAndRemovesLinkedPosts() {
+        Media media = media("media-1", "user-1");
+        when(mongoTemplate.findById("media-1", Media.class)).thenReturn(media);
+
         adminMediaService.deleteMedia("media-1", "admin-1");
+
         verify(mediaService).adminDeleteMedia("media-1", "admin-1");
+        verify(adminPostService).deletePostsReferencingImageUrl(media.getUrl(), "admin-1");
     }
 
     @Test

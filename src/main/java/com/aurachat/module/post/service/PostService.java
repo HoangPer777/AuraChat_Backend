@@ -255,11 +255,16 @@ public class PostService {
         if (posts.isEmpty()) return List.of();
 
         Map<String, Post> originals = loadOriginalPosts(posts);
-        Set<String> postIds = posts.stream().map(Post::getId).collect(Collectors.toSet());
+        List<Post> visiblePosts = posts.stream()
+            .filter(post -> post.getOriginalPostId() == null || originals.containsKey(post.getOriginalPostId()))
+            .toList();
+        if (visiblePosts.isEmpty()) return List.of();
+
+        Set<String> postIds = visiblePosts.stream().map(Post::getId).collect(Collectors.toSet());
         Map<String, Boolean> likedMap = loadLikedPostIds(postIds, viewerId);
 
         Set<String> userIds = new HashSet<>();
-        posts.forEach(p -> {
+        visiblePosts.forEach(p -> {
             userIds.add(p.getAuthorId());
             if (p.getOriginalPostId() != null) {
                 Post original = originals.get(p.getOriginalPostId());
@@ -268,7 +273,7 @@ public class PostService {
         });
         Map<String, User> users = loadUsers(userIds);
 
-        return posts.stream()
+        return visiblePosts.stream()
             .map(post -> toPostResponse(post, viewerId, originals, likedMap, users))
             .toList();
     }
