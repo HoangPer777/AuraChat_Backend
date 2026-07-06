@@ -182,7 +182,8 @@ public class CallService {
 
         CallState state = getStateIfPresent(candidate.callId());
         if (state == null) {
-            throw new BusinessLogicException(ErrorCode.CALL_NOT_FOUND, "Call not found or already ended", candidate.callId());
+            log.debug("Skip ICE relay for ended or unknown call: callId={}", candidate.callId());
+            return;
         }
         String targetUserId = resolvePeer(state, senderId);
 
