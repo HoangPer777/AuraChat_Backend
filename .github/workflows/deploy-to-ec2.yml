@@ -62,15 +62,5 @@ jobs:
               exit 1
             fi
 
-            # Coturn TURN — IP public EC2 (TURN_EXTERNAL_IP trong .env hoặc auto-detect)
-            TURN_IP="${TURN_EXTERNAL_IP:-$(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo "")}"
-            if [ -n "$TURN_IP" ]; then
-              sed "s/__TURN_EXTERNAL_IP__/${TURN_IP}/g" coturn/turnserver.conf.template > coturn/turnserver.conf
-              echo "Coturn external-ip=${TURN_IP}"
-            else
-              echo "WARN: TURN_EXTERNAL_IP not set — copy turnserver.conf.template manually"
-              cp -f coturn/turnserver.conf.template coturn/turnserver.conf
-            fi
-
             # JAR đã build trên GitHub Actions — Dockerfile chỉ copy target/*.jar
             docker-compose up --build -d
