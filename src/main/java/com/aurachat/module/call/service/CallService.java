@@ -7,6 +7,7 @@ import com.aurachat.common.exception.ValidationException;
 import com.aurachat.module.call.dto.CallAnswerDto;
 import com.aurachat.module.call.dto.CallLogDto;
 import com.aurachat.module.call.dto.CallOfferDto;
+import com.aurachat.module.call.dto.CallRenegotiateDto;
 import com.aurachat.module.call.dto.CallResponse;
 import com.aurachat.module.call.dto.IceCandidateDto;
 import com.aurachat.module.call.dto.InitiateCallRequest;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -197,6 +199,41 @@ public class CallService {
         );
 
         messagingTemplate.convertAndSendToUser(targetUserId, "/queue/call", payload);
+    }
+
+    public void relayRenegotiate(String senderId, CallRenegotiateDto dto) {
+        if (dto == null || dto.callId() == null || dto.callId().isBlank()) {
+            throw new ValidationException(ErrorCode.VALIDATION_REQUIRED_FIELD, "callId", null, "Call id is required");
+        }
+        if (dto.sdp() == null || dto.sdp().isBlank()) {
+            throw new ValidationException(ErrorCode.VALIDATION_REQUIRED_FIELD, "sdp", dto.sdp(), "SDP is required");
+        }
+        if (dto.sdpType() == null || dto.sdpType().isBlank()) {
+            throw new ValidationException(ErrorCode.VALIDATION_REQUIRED_FIELD, "sdpType", dto.sdpType(), "SDP type is required");
+        }
+        if (!"offer".equalsIgnoreCase(dto.sdpType()) && !"answer".equalsIgnoreCase(dto.sdpType())) {
+            throw new ValidationException(ErrorCode.VALIDATION_INVALID_FORMAT, "sdpType", dto.sdpType(), "SDP type must be offer or answer");
+        }
+
+        CallState state = getStateIfPresent(dto.callId());
+        if (state == null) {
+            log.debug("Skip renegotiation relay for ended or unknown call: callId={}", dto.callId());
+            return;
+        }
+        ensureParticipant(state, senderId);
+
+        String peerId = resolvePeer(state, senderId);
+        if (dto.targetUserId() != null && !dto.targetUserId().isBlank() && !peerId.equals(dto.targetUserId())) {
+            throw new AuthorizationException("call renegotiation", "participant", dto.targetUserId());
+        }
+
+        messagingTemplate.convertAndSendToUser(peerId, "/queue/call", Map.of(
+            "callId", dto.callId(),
+            "renegotiate", true,
+            "sdpType", dto.sdpType().toLowerCase(),
+            "sdp", dto.sdp(),
+            "senderId", senderId
+        ));
     }
 
     @PreDestroy

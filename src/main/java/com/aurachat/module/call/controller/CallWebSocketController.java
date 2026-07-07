@@ -1,6 +1,7 @@
 package com.aurachat.module.call.controller;
 
 import com.aurachat.module.call.dto.CallAnswerDto;
+import com.aurachat.module.call.dto.CallRenegotiateDto;
 import com.aurachat.module.call.dto.CallResponse;
 import com.aurachat.module.call.dto.GroupCallJoinRequest;
 import com.aurachat.module.call.dto.GroupCallPeerAnswerDto;
@@ -33,6 +34,12 @@ public class CallWebSocketController {
     public void answer(CallAnswerDto answer, Principal principal) {
         if (principal == null || answer == null) return;
         callService.acceptCall(answer.callId(), principal.getName(), answer.sdp());
+    }
+
+    @MessageMapping("/call/renegotiate")
+    public void renegotiate(CallRenegotiateDto dto, Principal principal) {
+        if (principal == null || dto == null) return;
+        callService.relayRenegotiate(principal.getName(), dto);
     }
 
     @MessageMapping("/call/ice-candidate")
